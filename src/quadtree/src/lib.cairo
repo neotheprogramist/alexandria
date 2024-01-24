@@ -1,3 +1,5 @@
+#[cfg(test)]
+mod tests;
 
 trait QuadtreeTrait<Q, N, T> {
     /// Creates a new Stack instance.
