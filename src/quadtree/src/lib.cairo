@@ -3,28 +3,23 @@ mod tests;
 
 trait QuadtreeTrait<T> {
     /// Creates a new uadtree instance.
-    fn new() -> Felt252Quadtree<V<T>>;
+    fn new() -> Felt252Quadtree<Felt252QuadtreeNode<T>>;
 }
 
 struct Felt252Quadtree<T> {
     elements: Felt252Dict<Nullable<T>>,
 }
 
-#[derive(Drop)]
-struct V<T> {
-    pub v: T
-}
-
-impl DestructFelt252Quadtree<T, +Drop<T>, +Felt252DictValue<T>> of Destruct<Felt252Quadtree<V<T>>> {
-    fn destruct(self: Felt252Quadtree<V<T>>) nopanic {
+impl DestructFelt252Quadtree<T, +Drop<T>, +Felt252DictValue<T>> of Destruct<Felt252Quadtree<Felt252QuadtreeNode<T>>> {
+    fn destruct(self: Felt252Quadtree<Felt252QuadtreeNode<T>>) nopanic {
         self.elements.squash();
     }
 }
 
 #[derive(Drop, Copy)]
 enum Felt252QuadtreeNode<T> {
-    Leaf: Felt252QuadtreeLeaf<Nullable<T>>,
-    Branch: Felt252QuadtreeBranch<T>,
+    Leaf: Felt252QuadtreeLeaf<T>,
+    Branch: Felt252QuadtreeBranch,
 }
 
 #[derive(Drop, Copy)]
@@ -33,10 +28,9 @@ struct Felt252QuadtreeLeaf<T> {
 }
 
 #[derive(Drop, Copy)]
-struct Felt252QuadtreeBranch<T> {
-    // path: felt252,
-    // mask: felt252,
-    value: T,
+struct Felt252QuadtreeBranch {
+    path: felt252,
+    mask: felt252,
 }
 
 impl Felt252QuadtreeImpl<
@@ -45,9 +39,9 @@ impl Felt252QuadtreeImpl<
     +Drop<T>,
     +Felt252DictValue<T>,
 > of QuadtreeTrait<T> {
-    fn new() -> Felt252Quadtree<V<T>> {
+    fn new() -> Felt252Quadtree<Felt252QuadtreeNode<T>> {
         let mut elements = Default::default();
-        Felt252Quadtree::<V<T>> { elements }
+        Felt252Quadtree { elements }
     }
 }
 
