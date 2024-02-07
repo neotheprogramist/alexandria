@@ -1,10 +1,11 @@
 use quadtree::area::Area;
 
-#[derive(Drop, Copy)]
-enum Felt252QuadtreeNode<T, C> {
-    Branch: Felt252QuadtreeBranch,
-    Leaf: Felt252QuadtreeLeaf<T, C>,
-    Empty: (),
+#[derive(Drop)]
+struct Felt252QuadtreeNode<T, C> {
+    path: felt252,
+    mask: felt252,
+    region: Area<C>,
+    values: Span<T>,
 }
 
 #[derive(Drop, Copy)]
@@ -18,4 +19,3 @@ struct Felt252QuadtreeBranch {
     path: felt252,
     mask: felt252,
 }
-

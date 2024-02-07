@@ -1,6 +1,6 @@
 use quadtree::point::{Point, PointTrait, PointImpl};
 
-#[derive(Copy, Drop)]
+#[derive(Drop, Copy)]
 struct Area<T> {
     top_left: Point<T>,
     bottom_right: Point<T>,

@@ -1,3 +1,4 @@
+use core::array::ArrayTrait;
 use core::nullable::{nullable_from_box, match_nullable, FromNullableResult};
 use quadtree::quadtree::QuadtreeTrait;
 use quadtree::node::{Felt252QuadtreeNode, Felt252QuadtreeLeaf, Felt252QuadtreeBranch};
@@ -7,16 +8,13 @@ use quadtree::point::{Point, PointTrait};
 
 #[test]
 fn test_root() {
-    let root = Felt252QuadtreeNode::Leaf(
-        Felt252QuadtreeLeaf { area: AreaTrait::new(PointTrait::new(0, 0), 100, 100), value: 2137 }
-    );
-    let mut tree = QuadtreeTrait::new(root);
-    let root = tree.root();
-    let leaf = match root {
-        Felt252QuadtreeNode::Leaf(leaf) => leaf,
-        _ => panic!("Root is not a leaf")
-    };
-    assert_eq!(leaf.value, 2137);
+    let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
+    let mut tree = QuadtreeTrait::<felt252>::new(root_region);
+
+    tree.insert(0, 42);
+    tree.insert(0, 2137);
+    assert_eq!(*tree.values(0).at(0), 42);
+    assert_eq!(*tree.values(0).at(1), 2137);
 }
 
 #[test]

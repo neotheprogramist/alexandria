@@ -1,5 +1,5 @@
 use core::traits::TryInto;
-#[derive(Drop, Copy)]
+#[derive(Drop, Clone, Copy)]
 struct Point<T> {
     x: T,
     y: T,
