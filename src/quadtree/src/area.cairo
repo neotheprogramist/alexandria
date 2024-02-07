@@ -1,5 +1,6 @@
 use quadtree::point::{Point, PointTrait, PointImpl};
 
+/// Represents an 2D area in the quadtree
 #[derive(Drop, Copy)]
 struct Area<T> {
     top_left: Point<T>,
@@ -7,8 +8,11 @@ struct Area<T> {
 }
 
 trait AreaTrait<T> {
+    /// Creates a new area
     fn new(top_left: Point<T>, width: T, height: T) -> Area<T>;
+    /// Checks if the area contains a point
     fn contains(self: @Area<T>, point: @Point<T>) -> bool;
+    /// Checks if the area intersects or contains another area
     fn intersects(self: @Area<T>, other: @Area<T>) -> bool;
 }
 
