@@ -1,7 +1,6 @@
 use core::array::ArrayTrait;
 use core::nullable::{nullable_from_box, match_nullable, FromNullableResult};
-use quadtree::quadtree::QuadtreeTrait;
-use quadtree::node::{Felt252QuadtreeNode, Felt252QuadtreeLeaf, Felt252QuadtreeBranch};
+use quadtree::quadtree::{QuadtreeTrait, Felt252QuadtreeNode};
 use quadtree::area::{Area, AreaTrait};
 use quadtree::point::{Point, PointTrait};
 
@@ -9,7 +8,7 @@ use quadtree::point::{Point, PointTrait};
 #[test]
 fn test_root() {
     let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
-    let mut tree = QuadtreeTrait::<felt252>::new(root_region);
+    let mut tree = QuadtreeTrait::<felt252, felt252>::new(root_region);
 
     tree.insert(0, 42);
     tree.insert(0, 2137);
