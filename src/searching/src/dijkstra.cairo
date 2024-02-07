@@ -8,7 +8,6 @@ struct Node {
     weight: u128
 }
 
-
 /// Graph representation.
 struct Graph<T> {
     nodes: Array<Node>,

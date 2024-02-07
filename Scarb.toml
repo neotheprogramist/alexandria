@@ -12,6 +12,7 @@ members = [
   "src/ascii",
   "src/bytes",
   "src/utils",
+  "src/quadtree",
 ]
 name = "alexandria"
 version = "0.1.0"
