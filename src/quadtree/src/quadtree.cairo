@@ -1,3 +1,5 @@
+use core::option::OptionTrait;
+use core::traits::Into;
 use core::traits::TryInto;
 use core::array::SpanTrait;
 use core::clone::Clone;
@@ -5,8 +7,8 @@ use core::dict::Felt252DictEntryTrait;
 use core::nullable::{nullable_from_box, match_nullable, FromNullableResult};
 use core::array::ArrayTrait;
 use core::zeroable::Zeroable;
-use quadtree::area::{AreaTrait, Area};
-use quadtree::point::{Point, PointTrait};
+use quadtree::area::{AreaTrait, Area, AreaImpl};
+use quadtree::point::{Point, PointTrait, PointImpl};
 use quadtree::QuadtreeTrait;
 
 /// All the branches and leaves of the quadtree are stored in a dictionary.
@@ -28,6 +30,8 @@ struct Felt252QuadtreeNode<T, P, C> {
     /// The mask of the node in the quadtree, to differentiate between nodes.
     /// e.g 0 with mask of 0 is the root node, but 0 with mask of 4 is the top right of 16.
     mask: P,
+    /// Whether the node is a leaf or not.
+    is_leaf: bool,
 }
 
 
@@ -42,7 +46,12 @@ impl Felt252QuadtreeImpl<
     +Drop<C>,
     +Drop<P>,
     +Zeroable<P>, // Root has zero path of type P
-    +Into<P, felt252> // Dict key is felt252
+    +Into<P, felt252>, // Dict key is felt252
+    +Into<u8, P>, // Adding nested level
+    +Add<P>, // Nesting the path
+    +Mul<P>, // Nesting the path
+    +Add<C>, // Needed for area
+    +PointTrait<C>, // Present in the area
 > of QuadtreeTrait<T, P, C> {
     fn new(region: Area<C>) -> Felt252Quadtree<T, P, C> {
         // constructng the root node
@@ -52,7 +61,8 @@ impl Felt252QuadtreeImpl<
             path: Zeroable::zero(),
             mask: Zeroable::zero(),
             region,
-            values: ArrayTrait::<T>::new().span()
+            values: ArrayTrait::<T>::new().span(),
+            is_leaf: true,
         };
         // creating the dictionary
         let elements = Default::default();
@@ -88,7 +98,7 @@ impl Felt252QuadtreeImpl<
         result
     }
 
-    fn insert(ref self: Felt252Quadtree<T, P, C>, path: P, value: T) {
+    fn insert(ref self: Felt252Quadtree<T, P, C>, value: T, path: P, mask: P) {
         // getting the node from the dictionary without cloning it
         let (entry, val) = self.elements.entry(path.into());
         let mut node = match match_nullable(val) {
@@ -112,6 +122,62 @@ impl Felt252QuadtreeImpl<
         // returning the node to the dictionary
         let val = nullable_from_box(BoxTrait::new(node));
         self.elements = entry.finalize(val);
+    }
+
+    fn split(ref self: Felt252Quadtree<T, P, C>, area: @Area<C>, point: Point<C>, path: P) {
+        // getting the node from the dictionary without cloning it
+        let (entry, val) = self.elements.entry(path.into());
+        let mut parent = match match_nullable(val) {
+            FromNullableResult::Null => panic!("No root found"),
+            FromNullableResult::NotNull(val) => val.unbox(),
+        };
+
+        // setting the parent to not be a leaf
+        parent.is_leaf = false;
+        let mask = parent.mask;
+
+        // returning the node to the dictionary
+        let val = nullable_from_box(BoxTrait::new(parent));
+        self.elements = entry.finalize(val);
+
+        // preparing regions for the new nodes
+        let mut regions = array![
+            AreaTrait::new_from_points(area.top(), *point.x(), *point.y(), area.right()),    // ne
+            AreaTrait::new_from_points(area.top(), area.left(), *point.y(), *point.x()),     // nw
+            AreaTrait::new_from_points(*point.y(), area.left(), area.bottom(), *point.x()),  // sw
+            AreaTrait::new_from_points(*point.y(), *point.x(), area.bottom(), area.right()), // se
+        ];
+
+        // reused multipiers for the path and mask
+        let three: u8 = 3;
+        let four: u8 = 4;
+        let three: P = three.into();
+        let four: P = four.into();
+
+        let mut i: u8 = 0;
+        loop {
+            if regions.len() == 0 {
+                break;
+            }
+
+            // creating the new path from the parent path
+            let path = path * four + i.into();
+
+            // creating the leaf node
+            let node = Felt252QuadtreeNode::<
+                T, P, C
+            > {
+                path,
+                mask: mask * four + three,
+                region: regions.pop_front().unwrap(),
+                values: ArrayTrait::<T>::new().span(),
+                is_leaf: true,
+            };
+
+            // inserting the new node to the dictionary
+            self.elements.insert(path.into(), nullable_from_box(BoxTrait::new(node)));
+            i += 1;
+        };
     }
 }
 

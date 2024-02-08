@@ -10,19 +10,33 @@ struct Area<T> {
 trait AreaTrait<T> {
     /// Creates a new area
     fn new(top_left: Point<T>, width: T, height: T) -> Area<T>;
+    fn new_from_points(top: T, left: T, bottom: T, right: T) -> Area<T>;
     /// Checks if the area contains a point
     fn contains(self: @Area<T>, point: @Point<T>) -> bool;
     /// Checks if the area intersects or contains another area
     fn intersects(self: @Area<T>, other: @Area<T>) -> bool;
+    /// Getters for bouds of the area
+    fn top(self: @Area<T>) -> T;
+    fn left(self: @Area<T>) -> T;
+    fn bottom(self: @Area<T>) -> T;
+    fn right(self: @Area<T>) -> T;
 }
 
-impl AreaTraitImpl<T, +Add<T>, +Copy<T>, +Drop<T>, +PointTrait<T>> of AreaTrait<T> {
+impl AreaImpl<T, +Add<T>, +Copy<T>, +Drop<T>, +PointTrait<T>> of AreaTrait<T> {
     fn new(top_left: Point<T>, width: T, height: T) -> Area<T> {
         Area {
             top_left: top_left,
             bottom_right: Point { x: top_left.x + width, y: top_left.y + height },
         }
     }
+
+    fn new_from_points(top: T, left: T, bottom: T, right: T) -> Area<T> {
+        Area {
+            top_left: Point { x: left, y: top },
+            bottom_right: Point { x: right, y: bottom },
+        }
+    }
+
 
     fn contains(self: @Area<T>, point: @Point<T>) -> bool {
         point.between_x(self.top_left, self.bottom_right)
@@ -34,5 +48,21 @@ impl AreaTraitImpl<T, +Add<T>, +Copy<T>, +Drop<T>, +PointTrait<T>> of AreaTrait<
             && other.top_left.lt_x(self.bottom_right)
             && self.top_left.lt_y(other.bottom_right)
             && other.top_left.lt_y(self.bottom_right)
+    }
+
+    fn top(self: @Area<T>) -> T {
+       *self.top_left.y
+    }
+
+    fn left(self: @Area<T>) -> T {
+        *self.top_left.x
+    }
+
+    fn bottom(self: @Area<T>) -> T {
+        *self.bottom_right.y
+    }
+
+    fn right(self: @Area<T>) -> T {
+        *self.bottom_right.x
     }
 }
