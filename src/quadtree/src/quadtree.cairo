@@ -23,13 +23,11 @@ struct Felt252QuadtreeNode<T, P, C> {
     values: Span<T>,
     /// The region of the grometry that this node represents.
     region: Area<C>,
-    /// The path of the node in the quadtree, each 2 bits store a quadrant (ne, nw, se, sw).
-    /// e.g. 0b00 is the top right, 0b01 is the top left quadrant, 
-    /// 0b1111 is the bottom right quadrant of the bottom right.
+    /// The path of the node in the quadtree, the first bit is always a 1 and the
+    /// each 2 bits store a quadrant (ne, nw, se, sw).
+    /// e.g. 0b100 is the top right, 0b101 is the top left quadrant, 
+    /// 0b11111 is the bottom right quadrant of the bottom right.
     path: P,
-    /// The mask of the node in the quadtree, to differentiate between nodes.
-    /// e.g 0 with mask of 0 is the root node, but 0 with mask of 4 is the top right of 16.
-    mask: P,
     /// Whether the node is a leaf or not.
     is_leaf: bool,
 }
@@ -55,11 +53,11 @@ impl Felt252QuadtreeImpl<
 > of QuadtreeTrait<T, P, C> {
     fn new(region: Area<C>) -> Felt252Quadtree<T, P, C> {
         // constructng the root node
+        let root_path: u8 = 1;
         let root = Felt252QuadtreeNode::<
             T, P, C
         > {
-            path: Zeroable::zero(),
-            mask: Zeroable::zero(),
+            path: root_path.into(),
             region,
             values: ArrayTrait::<T>::new().span(),
             is_leaf: true,
@@ -69,7 +67,7 @@ impl Felt252QuadtreeImpl<
         let mut tree = Felt252Quadtree { elements };
 
         // inserting it at root
-        tree.elements.insert(0, nullable_from_box(BoxTrait::new(root)));
+        tree.elements.insert(root_path.into(), nullable_from_box(BoxTrait::new(root)));
         tree
     }
 
@@ -77,7 +75,7 @@ impl Felt252QuadtreeImpl<
         // getting the node from the dictionary without cloning it
         let (entry, val) = self.elements.entry(path.into());
         let node = match match_nullable(val) {
-            FromNullableResult::Null => panic!("No root found"),
+            FromNullableResult::Null => panic!("Node does not exist"),
             FromNullableResult::NotNull(val) => val.unbox(),
         };
 
@@ -102,7 +100,7 @@ impl Felt252QuadtreeImpl<
         // getting the node from the dictionary without cloning it
         let (entry, val) = self.elements.entry(path.into());
         let mut node = match match_nullable(val) {
-            FromNullableResult::Null => panic!("No root found"),
+            FromNullableResult::Null => panic!("Node does not exist"),
             FromNullableResult::NotNull(val) => val.unbox(),
         };
 
@@ -124,17 +122,17 @@ impl Felt252QuadtreeImpl<
         self.elements = entry.finalize(val);
     }
 
-    fn split(ref self: Felt252Quadtree<T, P, C>, area: @Area<C>, point: Point<C>, path: P) {
+    fn split(ref self: Felt252Quadtree<T, P, C>, path: P, point: Point<C>) {
         // getting the node from the dictionary without cloning it
         let (entry, val) = self.elements.entry(path.into());
         let mut parent = match match_nullable(val) {
-            FromNullableResult::Null => panic!("No root found"),
+            FromNullableResult::Null => panic!("Node does not exist"),
             FromNullableResult::NotNull(val) => val.unbox(),
         };
 
         // setting the parent to not be a leaf
         parent.is_leaf = false;
-        let mask = parent.mask;
+        let area = parent.region;
 
         // returning the node to the dictionary
         let val = nullable_from_box(BoxTrait::new(parent));
@@ -149,9 +147,7 @@ impl Felt252QuadtreeImpl<
         ];
 
         // reused multipiers for the path and mask
-        let three: u8 = 3;
         let four: u8 = 4;
-        let three: P = three.into();
         let four: P = four.into();
 
         let mut i: u8 = 0;
@@ -168,7 +164,6 @@ impl Felt252QuadtreeImpl<
                 T, P, C
             > {
                 path,
-                mask: mask * four + three,
                 region: regions.pop_front().unwrap(),
                 values: ArrayTrait::<T>::new().span(),
                 is_leaf: true,
