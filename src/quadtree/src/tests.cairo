@@ -14,8 +14,8 @@ fn test_root() {
     let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region);
 
     // Values can be inserted into the tree (at any place for now)
-    tree.insert(42, 1, 0);
-    tree.insert(2137, 1, 0);
+    tree.insert_at(42, 1);
+    tree.insert_at(2137, 1);
     // and retrieved from it, in the same fashion
     assert_eq!(*tree.values(1).at(0), 42);
     assert_eq!(*tree.values(1).at(1), 2137);

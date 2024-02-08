@@ -29,7 +29,7 @@ struct Felt252QuadtreeNode<T, P, C> {
     /// 0b11111 is the bottom right quadrant of the bottom right.
     path: P,
     /// Whether the node is a leaf or not.
-    is_leaf: bool,
+    is_leaf: Option<Point<C>>,
 }
 
 
@@ -60,7 +60,7 @@ impl Felt252QuadtreeImpl<
             path: root_path.into(),
             region,
             values: ArrayTrait::<T>::new().span(),
-            is_leaf: true,
+            is_leaf: Option::None,
         };
         // creating the dictionary
         let elements = Default::default();
@@ -96,7 +96,7 @@ impl Felt252QuadtreeImpl<
         result
     }
 
-    fn insert(ref self: Felt252Quadtree<T, P, C>, value: T, path: P, mask: P) {
+    fn insert_at(ref self: Felt252Quadtree<T, P, C>, value: T, path: P) {
         // getting the node from the dictionary without cloning it
         let (entry, val) = self.elements.entry(path.into());
         let mut node = match match_nullable(val) {
@@ -122,6 +122,57 @@ impl Felt252QuadtreeImpl<
         self.elements = entry.finalize(val);
     }
 
+    fn insert_point(ref self: Felt252Quadtree<T, P, C>, value: T, point: Point<C>) {
+        // type interference hack
+        let one: u8 = 1;
+        let bottom = one + one;
+        let four: P = (bottom + bottom).into();
+
+
+        let mut path: P = one.into();
+        let mut break_flag = false;
+
+        loop {
+            if break_flag {
+                break;
+            }
+
+            // getting a smaller node
+            let (entry, val) = self.elements.entry(path.into());
+            let mut node = match match_nullable(val) {
+                FromNullableResult::Null => panic!("Node does not exist"),
+                FromNullableResult::NotNull(val) => val.unbox(),
+            };
+
+            // checking if the node is a leaf, or which quadrant the point is in
+            path = match node.is_leaf {
+                Option::Some(middle) => {
+                    match point.lt_x(@middle) {
+                        true => match point.lt_y(@middle) {
+                            true => path * four + one.into(),
+                            false => path * four + bottom.into(), 
+                        },
+                        false => match point.lt_y(@middle) {
+                            true => path * four,
+                            false => path * four + bottom.into() + one.into()
+                        },
+                    }
+                },
+                Option::None => {
+                    // the node is leaf
+                    // TODO: split the node
+                    break_flag = true;
+                    path
+                },
+            };
+
+            let val = nullable_from_box(BoxTrait::new(node));
+            self.elements = entry.finalize(val);
+        };
+
+        self.insert_at(value, path);
+    }
+
     fn split(ref self: Felt252Quadtree<T, P, C>, path: P, point: Point<C>) {
         // getting the node from the dictionary without cloning it
         let (entry, val) = self.elements.entry(path.into());
@@ -130,13 +181,8 @@ impl Felt252QuadtreeImpl<
             FromNullableResult::NotNull(val) => val.unbox(),
         };
 
-        // setting the parent to not be a leaf
-        parent.is_leaf = false;
+        // retrieving the region of the parent node
         let area = parent.region;
-
-        // returning the node to the dictionary
-        let val = nullable_from_box(BoxTrait::new(parent));
-        self.elements = entry.finalize(val);
 
         // preparing regions for the new nodes
         let mut regions = array![
@@ -145,6 +191,12 @@ impl Felt252QuadtreeImpl<
             AreaTrait::new_from_points(*point.y(), area.left(), area.bottom(), *point.x()),  // sw
             AreaTrait::new_from_points(*point.y(), *point.x(), area.bottom(), area.right()), // se
         ];
+
+        // returning the node to the dictionary
+        parent.is_leaf = Option::Some(point);
+        let val = nullable_from_box(BoxTrait::new(parent));
+        self.elements = entry.finalize(val);
+
 
         // reused multipiers for the path and mask
         let four: u8 = 4;
@@ -166,7 +218,7 @@ impl Felt252QuadtreeImpl<
                 path,
                 region: regions.pop_front().unwrap(),
                 values: ArrayTrait::<T>::new().span(),
-                is_leaf: true,
+                is_leaf: Option::None,
             };
 
             // inserting the new node to the dictionary
