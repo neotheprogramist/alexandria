@@ -1,3 +1,4 @@
+use core::option::OptionTrait;
 use core::array::ArrayTrait;
 use core::nullable::{nullable_from_box, match_nullable, FromNullableResult};
 use quadtree::quadtree::{QuadtreeTrait, Felt252QuadtreeNode, Felt252QuadtreeImpl};
@@ -13,12 +14,43 @@ fn test_root() {
     let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region);
 
     // Values can be inserted into the tree (at any place for now)
-    tree.insert(42, 0, 0);
-    tree.insert(2137, 0, 0);
+    tree.insert(42, 1, 0);
+    tree.insert(2137, 1, 0);
     // and retrieved from it, in the same fashion
-    assert_eq!(*tree.values(0).at(0), 42);
-    assert_eq!(*tree.values(0).at(1), 2137);
+    assert_eq!(*tree.values(1).at(0), 42);
+    assert_eq!(*tree.values(1).at(1), 2137);
 }
+
+#[test]
+fn test_split() {
+    let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
+    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region);
+    tree.split(1, PointTrait::new(1, 1));
+    tree.split(0b101, PointTrait::new(1, 1));
+
+    assert(tree.values(1).is_empty(), 'root does not exist');
+
+    assert(tree.values(0b100).is_empty(), 'ne does not exist');
+    assert(tree.values(0b101).is_empty(), 'nw does not exist');
+    assert(tree.values(0b101).is_empty(), 'se does not exist');
+    assert(tree.values(0b111).is_empty(), 'sw does not exist');
+
+    assert(tree.values(0b10100).is_empty(), 'ne of se does not exist');
+    assert(tree.values(0b10101).is_empty(), 'nw of se does not exist');
+    assert(tree.values(0b10110).is_empty(), 'se of se does not exist');
+    assert(tree.values(0b10111).is_empty(), 'sw of se does not exist');
+}
+
+#[test]
+#[should_panic]
+fn test_split_too_many() {
+    let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
+    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region);
+    tree.split(1, PointTrait::new(1, 1));
+
+    assert(tree.values(8).is_empty(), 'out of bounds exists');
+}
+
 
 #[test]
 fn point_test() {
