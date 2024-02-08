@@ -21,6 +21,21 @@ fn test_root() {
     assert_eq!(*tree.values(1).at(1), 2137);
 }
 
+
+#[test]
+fn test_insert_point() {
+    // Create a root region at (0, 0) with a width and height of 4
+    let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
+    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region);
+    tree.split(1, PointTrait::new(2, 2));
+
+    // Values can be inserted into the tree (at any place for now)
+    tree.insert_point(42, PointTrait::new(1, 1));
+
+    // and retrieved from it, in the same fashion
+    assert(tree.values(0b101).get(0).is_some(), 'nw does not exist');
+}
+
 #[test]
 fn test_split() {
     let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
