@@ -28,7 +28,6 @@ impl Felt252QuadtreeImpl<
     +Drop<T>,
     +Drop<C>,
     +Drop<P>,
-    +Zeroable<P>, // Root has zero path of type P
     +Into<P, felt252>, // Dict key is felt252
     +Into<u8, P>, // Adding nested level
     +Add<P>, // Nesting the path
@@ -82,28 +81,23 @@ impl Felt252QuadtreeImpl<
     }
 
     fn query_regions(ref self: Felt252Quadtree<T, P, C>, point: Point<C>) -> Array<T> {
-        // type interference hack
-        let one: u8 = 1;
-        let bottom = one + one;
-        let four: P = (bottom + bottom).into();
-
-        let mut path: P = one.into();
-        let mut break_flag = false;
+        let root_path: u8 = 1;
+        let mut path = Option::Some(root_path.into());
         let mut values = ArrayTrait::new();
 
         loop {
-            if break_flag {
-                break;
-            }
-
-            // getting a smaller node
-            let (entry, val) = self.elements.entry(path.into());
+            // get the node from the dictionary without cloning it
+            let (entry, val) = match path {
+                Option::Some(path) => self.elements.entry(path.into()),
+                // break if the last node was a leaf
+                Option::None => { break; },
+            };
             let mut node = match match_nullable(val) {
                 FromNullableResult::Null => panic!("Node does not exist"),
                 FromNullableResult::NotNull(val) => val.unbox(),
             };
 
-            // adding the values to the result
+            // add the values to the result
             let mut i = 0;
             loop {
                 if i == node.values.len() {
@@ -113,27 +107,7 @@ impl Felt252QuadtreeImpl<
                 i += 1;
             };
 
-            // checking if the node is a leaf, or which quadrant the point is in
-            path = match node.is_leaf {
-                Option::Some(middle) => {
-                    match point.lt_x(@middle) {
-                        true => match point.lt_y(@middle) {
-                            true => path * four + one.into(),
-                            false => path * four + bottom.into(),
-                        },
-                        false => match point.lt_y(@middle) {
-                            true => path * four,
-                            false => path * four + bottom.into() + one.into()
-                        },
-                    }
-                },
-                Option::None => {
-                    // the node is leaf
-                    // TODO: split the node
-                    break_flag = true;
-                    path
-                },
-            };
+            path = node.child_at(@point);
 
             let val = nullable_from_box(BoxTrait::new(node));
             self.elements = entry.finalize(val);
@@ -169,53 +143,32 @@ impl Felt252QuadtreeImpl<
     }
 
     fn insert_point(ref self: Felt252Quadtree<T, P, C>, value: T, point: Point<C>) {
-        // type interference hack
-        let one: u8 = 1;
-        let bottom = one + one;
-        let four: P = (bottom + bottom).into();
-
-        let mut path: P = one.into();
-        let mut break_flag = false;
+        let root_path: u8 = 1;
+        let mut last_path: P = root_path.into();
+        let mut path = Option::Some(last_path);
 
         loop {
-            if break_flag {
-                break;
-            }
-
-            // getting a smaller node
-            let (entry, val) = self.elements.entry(path.into());
+            // get the node from the dictionary without cloning it
+            let (entry, val) = match path {
+                Option::Some(path) => {
+                    last_path = path;
+                    self.elements.entry(path.into())
+                },
+                // break if the last node was a leaf
+                Option::None => { break; },
+            };
             let mut node = match match_nullable(val) {
                 FromNullableResult::Null => panic!("Node does not exist"),
                 FromNullableResult::NotNull(val) => val.unbox(),
             };
-
-            // checking if the node is a leaf, or which quadrant the point is in
-            path = match node.is_leaf {
-                Option::Some(middle) => {
-                    match point.lt_x(@middle) {
-                        true => match point.lt_y(@middle) {
-                            true => path * four + one.into(),
-                            false => path * four + bottom.into(),
-                        },
-                        false => match point.lt_y(@middle) {
-                            true => path * four,
-                            false => path * four + bottom.into() + one.into()
-                        },
-                    }
-                },
-                Option::None => {
-                    // the node is leaf
-                    // TODO: split the node
-                    break_flag = true;
-                    path
-                },
-            };
+    
+            path = node.child_at(@point);
 
             let val = nullable_from_box(BoxTrait::new(node));
             self.elements = entry.finalize(val);
         };
 
-        self.insert_at(value, path);
+        self.insert_at(value, last_path);
     }
 
     fn insert_region(ref self: Felt252Quadtree<T, P, C>, value: T, region: Area<C>) {
@@ -260,20 +213,6 @@ impl Felt252QuadtreeImpl<
                 to_visit.append(child_path + bottom);
                 to_visit.append(child_path + bottom + one);
             }
-
-            // let p: felt252 = path.into();
-            // let x: felt252 = (*node.region.top_left().x()).into();
-            // let y: felt252 = (*node.region.top_left().y()).into();
-            // let tv = to_visit.len();
-            // let ta = to_append.len();
-
-            // '-----'.print();
-            // p.print();
-            // x.print();
-            // y.print();
-            // tv.print();
-            // ta.print();
-            // '-----'.print();
 
             let val = nullable_from_box(BoxTrait::new(node));
             self.elements = entry.finalize(val);

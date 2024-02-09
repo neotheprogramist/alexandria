@@ -20,6 +20,7 @@ struct QuadtreeNode<T, P, C> {
 }
 
 trait QuadtreeNodeTrait<T, P, C> {
+    fn new(region: Area<C>, path: P) -> QuadtreeNode<T, P, C>;
     fn child_at(self: @QuadtreeNode<T, P, C>, point: @Point<C>) -> Option<P>;
     fn split_at(ref self: QuadtreeNode<T, P, C>, point: Point<C>) -> Array<QuadtreeNode<T, P, C>>;
 }
@@ -34,14 +35,24 @@ impl QuadtreeNodeImpl<
     +Drop<T>,
     +Drop<C>,
     +Drop<P>,
-    +Zeroable<P>, // Root has zero path of type P
-    +Into<P, felt252>, // Dict key is felt252
     +Into<u8, P>, // Adding nested level
     +Add<P>, // Nesting the path
     +Mul<P>, // Nesting the path
     +Add<C>, // Needed for area
     +PointTrait<C>, // Present in the area
 > of QuadtreeNodeTrait<T, P, C> {
+    /// Creates a leaf node with the given region and path.
+    fn new(region: Area<C>, path: P) -> QuadtreeNode<T, P, C> {
+        QuadtreeNode::<
+            T, P, C
+        > { path, region, values: ArrayTrait::new().span(), is_leaf: Option::None, }
+    }
+
+    /// Returns the child containing the given point.
+    /// If the node is a leaf, it returns None.
+    /// Assumes the point is within the region of the node.
+    /// If the point is on the border of the region, it returns the child
+    /// with greater coordinates - top first, then left.
     fn child_at(self: @QuadtreeNode<T, P, C>, point: @Point<C>) -> Option<P> {
         // type interference hack
         let one: u8 = 1;
@@ -49,22 +60,21 @@ impl QuadtreeNodeImpl<
         let four: P = (bottom + bottom).into();
 
         match self.is_leaf {
+            // compare coordinates with the middle of the region in the greater
             Option::Some(middle) => Option::Some(
-                {
-                    match point.lt_x(middle) {
-                        true => match point.lt_y(middle) {
-                            true => *self.path * four + one.into(),
-                            false => *self.path * four + bottom.into(),
-                        },
-                        false => match point.lt_y(middle) {
-                            true => *self.path * four,
-                            false => *self.path * four + bottom.into() + one.into()
-                        },
-                    }
+                match point.lt_y(middle) {
+                    true => match point.lt_x(middle) {
+                        true => *self.path * four + one.into(),
+                        false => *self.path * four,
+                    },
+                    false => match point.lt_x(middle) {
+                        true => *self.path * four + bottom.into(),
+                        false => *self.path * four + bottom.into() + one.into()
+                    },
                 }
             ),
             Option::None => {
-                // the node is leaf
+                // return none if the node is a leaf
                 return Option::None;
             },
         }
@@ -74,7 +84,6 @@ impl QuadtreeNodeImpl<
         // returning the node to the dictionary
         assert(self.is_leaf.is_none(), 'Node is not a leaf');
         self.is_leaf = Option::Some(point);
-
 
         // retrieving the region of the parent node
         let area = self.region;
@@ -86,7 +95,6 @@ impl QuadtreeNodeImpl<
             AreaTrait::new_from_points(*point.y(), area.left(), area.bottom(), *point.x()), // sw
             AreaTrait::new_from_points(*point.y(), *point.x(), area.bottom(), area.right()), // se
         ];
-
 
         // reused multipiers for the path and mask
         let four: u8 = 4;
@@ -123,8 +131,35 @@ impl QuadtreeNodeImpl<
 }
 
 #[test]
+fn test_node_child_at() {
+    let mut node = QuadtreeNodeTrait::<
+        i32, u8, i32
+    >::new(AreaTrait::new(PointTrait::new(0, 0), 4, 4), 1);
+
+    assert(node.child_at(@PointTrait::new(1, 1)).is_none(), 'child before split');
+    node.split_at(PointTrait::new(2, 2));
+
+    assert(node.child_at(@PointTrait::new(3, 1)).unwrap() == 0b100, 'ne center');
+    assert(node.child_at(@PointTrait::new(1, 1)).unwrap() == 0b101, 'nw center');
+    assert(node.child_at(@PointTrait::new(1, 3)).unwrap() == 0b110, 'sw center');
+    assert(node.child_at(@PointTrait::new(3, 3)).unwrap() == 0b111, 'se center');
+
+    assert(node.child_at(@PointTrait::new(4, 0)).unwrap() == 0b100, 'ne corner');
+    assert(node.child_at(@PointTrait::new(0, 0)).unwrap() == 0b101, 'nw corner');
+    assert(node.child_at(@PointTrait::new(0, 4)).unwrap() == 0b110, 'sw corner');
+    assert(node.child_at(@PointTrait::new(4, 4)).unwrap() == 0b111, 'se corner');
+
+    assert(node.child_at(@PointTrait::new(2, 0)).unwrap() == 0b100, 'ne over nw');
+    assert(node.child_at(@PointTrait::new(0, 2)).unwrap() == 0b110, 'sw over nw');
+    assert(node.child_at(@PointTrait::new(2, 4)).unwrap() == 0b111, 'se over sw');
+    assert(node.child_at(@PointTrait::new(4, 2)).unwrap() == 0b111, 'se over ne');
+}
+
+#[test]
 fn test_node_split() {
-    let mut root = QuadtreeNode::<i32, u8, i32> {
+    let mut root = QuadtreeNode::<
+        i32, u8, i32
+    > {
         path: 1,
         region: AreaTrait::new(PointTrait::new(0, 0), 4, 4),
         values: ArrayTrait::new().span(),
@@ -153,7 +188,7 @@ fn test_node_split() {
     assert(se.region.left() == 2, 'left se invalid');
     assert(nw.region.left() == 0, 'right nw invalid');
     assert(sw.region.left() == 0, 'right sw invalid');
-    
+
     assert(ne.region.bottom() == 2, 'bottom ne invalid');
     assert(nw.region.bottom() == 2, 'bottom nw invalid');
     assert(sw.region.bottom() == 4, 'bottom sw invalid');
