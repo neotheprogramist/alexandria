@@ -7,29 +7,14 @@ use core::dict::Felt252DictEntryTrait;
 use core::nullable::{nullable_from_box, match_nullable, FromNullableResult};
 use core::array::ArrayTrait;
 use core::zeroable::Zeroable;
+
 use quadtree::area::{AreaTrait, Area, AreaImpl};
 use quadtree::point::{Point, PointTrait, PointImpl};
-use quadtree::QuadtreeTrait;
+use quadtree::{QuadtreeTrait, QuadtreeNode};
 
 /// All the branches and leaves of the quadtree are stored in a dictionary.
 struct Felt252Quadtree<T, P, C> {
-    elements: Felt252Dict<Nullable<Felt252QuadtreeNode<T, P, C>>>,
-}
-
-/// Each node in the quadtree is a struct with a region, a path, a mask and a list of values.
-#[derive(Drop)]
-struct Felt252QuadtreeNode<T, P, C> {
-    /// Values for a given region of the quadtree.
-    values: Span<T>,
-    /// The region of the grometry that this node represents.
-    region: Area<C>,
-    /// The path of the node in the quadtree, the first bit is always a 1 and the
-    /// each 2 bits store a quadrant (ne, nw, se, sw).
-    /// e.g. 0b100 is the top right, 0b101 is the top left quadrant, 
-    /// 0b11111 is the bottom right quadrant of the bottom right.
-    path: P,
-    /// Whether the node is a leaf or not.
-    is_leaf: Option<Point<C>>,
+    elements: Felt252Dict<Nullable<QuadtreeNode<T, P, C>>>,
 }
 
 
@@ -45,7 +30,6 @@ impl Felt252QuadtreeImpl<
     +Drop<P>,
     +Zeroable<P>, // Root has zero path of type P
     +Into<P, felt252>, // Dict key is felt252
-    +Into<C, felt252>, // TODO: remove me
     +Into<u8, P>, // Adding nested level
     +Add<P>, // Nesting the path
     +Mul<P>, // Nesting the path
@@ -55,7 +39,7 @@ impl Felt252QuadtreeImpl<
     fn new(region: Area<C>) -> Felt252Quadtree<T, P, C> {
         // constructng the root node
         let root_path: u8 = 1;
-        let root = Felt252QuadtreeNode::<
+        let root = QuadtreeNode::<
             T, P, C
         > {
             path: root_path.into(),
@@ -95,6 +79,67 @@ impl Felt252QuadtreeImpl<
         let val = nullable_from_box(BoxTrait::new(node));
         self.elements = entry.finalize(val);
         result
+    }
+
+    fn query_regions(ref self: Felt252Quadtree<T, P, C>, point: Point<C>) -> Array<T> {
+        // type interference hack
+        let one: u8 = 1;
+        let bottom = one + one;
+        let four: P = (bottom + bottom).into();
+
+        let mut path: P = one.into();
+        let mut break_flag = false;
+        let mut values = ArrayTrait::new();
+
+        loop {
+            if break_flag {
+                break;
+            }
+
+            // getting a smaller node
+            let (entry, val) = self.elements.entry(path.into());
+            let mut node = match match_nullable(val) {
+                FromNullableResult::Null => panic!("Node does not exist"),
+                FromNullableResult::NotNull(val) => val.unbox(),
+            };
+
+            // adding the values to the result
+            let mut i = 0;
+            loop {
+                if i == node.values.len() {
+                    break;
+                }
+                values.append(*node.values[i]);
+                i += 1;
+            };
+
+            // checking if the node is a leaf, or which quadrant the point is in
+            path = match node.is_leaf {
+                Option::Some(middle) => {
+                    match point.lt_x(@middle) {
+                        true => match point.lt_y(@middle) {
+                            true => path * four + one.into(),
+                            false => path * four + bottom.into(),
+                        },
+                        false => match point.lt_y(@middle) {
+                            true => path * four,
+                            false => path * four + bottom.into() + one.into()
+                        },
+                    }
+                },
+                Option::None => {
+                    // the node is leaf
+                    // TODO: split the node
+                    break_flag = true;
+                    path
+                },
+            };
+
+            let val = nullable_from_box(BoxTrait::new(node));
+            self.elements = entry.finalize(val);
+        };
+
+        values
     }
 
     fn insert_at(ref self: Felt252Quadtree<T, P, C>, value: T, path: P) {
@@ -280,12 +325,12 @@ impl Felt252QuadtreeImpl<
             let path = path * four + i.into();
 
             // creating the leaf node
-            let node = Felt252QuadtreeNode::<
+            let node = QuadtreeNode::<
                 T, P, C
             > {
                 path,
                 region: regions.pop_front().unwrap(),
-                values: ArrayTrait::<T>::new().span(),
+                values: ArrayTrait::new().span(),
                 is_leaf: Option::None,
             };
 
