@@ -10,7 +10,7 @@ use core::zeroable::Zeroable;
 
 use quadtree::area::{AreaTrait, Area, AreaImpl};
 use quadtree::point::{Point, PointTrait, PointImpl};
-use quadtree::{QuadtreeTrait, QuadtreeNode};
+use quadtree::{QuadtreeTrait, QuadtreeNode, QuadtreeNodeTrait};
 
 /// All the branches and leaves of the quadtree are stored in a dictionary.
 struct Felt252Quadtree<T, P, C> {
@@ -295,48 +295,21 @@ impl Felt252QuadtreeImpl<
             FromNullableResult::NotNull(val) => val.unbox(),
         };
 
-        // retrieving the region of the parent node
-        let area = parent.region;
-
-        // preparing regions for the new nodes
-        let mut regions = array![
-            AreaTrait::new_from_points(area.top(), *point.x(), *point.y(), area.right()), // ne
-            AreaTrait::new_from_points(area.top(), area.left(), *point.y(), *point.x()), // nw
-            AreaTrait::new_from_points(*point.y(), area.left(), area.bottom(), *point.x()), // sw
-            AreaTrait::new_from_points(*point.y(), *point.x(), area.bottom(), area.right()), // se
-        ];
+        let mut children = parent.split_at(point);
 
         // returning the node to the dictionary
-        parent.is_leaf = Option::Some(point);
         let val = nullable_from_box(BoxTrait::new(parent));
         self.elements = entry.finalize(val);
 
-        // reused multipiers for the path and mask
-        let four: u8 = 4;
-        let four: P = four.into();
-
-        let mut i: u8 = 0;
         loop {
-            if regions.len() == 0 {
-                break;
-            }
-
-            // creating the new path from the parent path
-            let path = path * four + i.into();
-
-            // creating the leaf node
-            let node = QuadtreeNode::<
-                T, P, C
-            > {
-                path,
-                region: regions.pop_front().unwrap(),
-                values: ArrayTrait::new().span(),
-                is_leaf: Option::None,
+            match children.pop_front() {
+                Option::Some(child) => {
+                    let path = child.path.into();
+                    let child = nullable_from_box(BoxTrait::new(child));
+                    self.elements.insert(path, child);
+                },
+                Option::None => { break; },
             };
-
-            // inserting the new node to the dictionary
-            self.elements.insert(path.into(), nullable_from_box(BoxTrait::new(node)));
-            i += 1;
         };
     }
 }

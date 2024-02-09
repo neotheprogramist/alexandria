@@ -6,7 +6,7 @@ mod quadtree;
 mod node;
 
 use quadtree::{Point, Area, Felt252Quadtree};
-use node::QuadtreeNode;
+use node::{QuadtreeNode, QuadtreeNodeTrait};
 
 //! Quadree implementation.
 //!

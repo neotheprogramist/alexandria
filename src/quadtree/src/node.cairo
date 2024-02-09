@@ -1,3 +1,4 @@
+use core::option::OptionTrait;
 use core::zeroable::Zeroable;
 use quadtree::area::{AreaTrait, Area, AreaImpl};
 use quadtree::point::{Point, PointTrait, PointImpl};
@@ -20,6 +21,7 @@ struct QuadtreeNode<T, P, C> {
 
 trait QuadtreeNodeTrait<T, P, C> {
     fn child_at(self: @QuadtreeNode<T, P, C>, point: @Point<C>) -> Option<P>;
+    fn split_at(ref self: QuadtreeNode<T, P, C>, point: Point<C>) -> Array<QuadtreeNode<T, P, C>>;
 }
 
 impl QuadtreeNodeImpl<
@@ -67,4 +69,99 @@ impl QuadtreeNodeImpl<
             },
         }
     }
+
+    fn split_at(ref self: QuadtreeNode<T, P, C>, point: Point<C>) -> Array<QuadtreeNode<T, P, C>> {
+        // returning the node to the dictionary
+        assert(self.is_leaf.is_none(), 'Node is not a leaf');
+        self.is_leaf = Option::Some(point);
+
+
+        // retrieving the region of the parent node
+        let area = self.region;
+
+        // preparing regions for the new nodes
+        let mut regions = array![
+            AreaTrait::new_from_points(area.top(), *point.x(), *point.y(), area.right()), // ne
+            AreaTrait::new_from_points(area.top(), area.left(), *point.y(), *point.x()), // nw
+            AreaTrait::new_from_points(*point.y(), area.left(), area.bottom(), *point.x()), // sw
+            AreaTrait::new_from_points(*point.y(), *point.x(), area.bottom(), area.right()), // se
+        ];
+
+
+        // reused multipiers for the path and mask
+        let four: u8 = 4;
+        let four: P = four.into();
+
+        let mut children = ArrayTrait::new();
+
+        let mut i: u8 = 0;
+        loop {
+            if regions.len() == 0 {
+                break;
+            }
+
+            // creating the new path from the parent path
+            let path = self.path * four + i.into();
+
+            // creating the leaf node
+            let node = QuadtreeNode::<
+                T, P, C
+            > {
+                path,
+                region: regions.pop_front().unwrap(),
+                values: ArrayTrait::new().span(),
+                is_leaf: Option::None,
+            };
+
+            // inserting the new node to the dictionary
+            children.append(node);
+            i += 1;
+        };
+
+        children
+    }
 }
+
+#[test]
+fn test_node_split() {
+    let mut root = QuadtreeNode::<i32, u8, i32> {
+        path: 1,
+        region: AreaTrait::new(PointTrait::new(0, 0), 4, 4),
+        values: ArrayTrait::new().span(),
+        is_leaf: Option::None,
+    };
+
+    let children = root.split_at(PointTrait::new(2, 2));
+
+    assert(children.len() == 4, 'There should be 4 children');
+    let ne = children.at(0);
+    let nw = children.at(1);
+    let sw = children.at(2);
+    let se = children.at(3);
+
+    assert(*ne.path == 0b100, 'path ne invalid');
+    assert(*nw.path == 0b101, 'path nw invalid');
+    assert(*sw.path == 0b110, 'path sw invalid');
+    assert(*se.path == 0b111, 'path se invalid');
+
+    assert(ne.region.top() == 0, 'top ne invalid');
+    assert(nw.region.top() == 0, 'top nw invalid');
+    assert(sw.region.top() == 2, 'top sw invalid');
+    assert(se.region.top() == 2, 'top se invalid');
+
+    assert(ne.region.left() == 2, 'left ne invalid');
+    assert(se.region.left() == 2, 'left se invalid');
+    assert(nw.region.left() == 0, 'right nw invalid');
+    assert(sw.region.left() == 0, 'right sw invalid');
+    
+    assert(ne.region.bottom() == 2, 'bottom ne invalid');
+    assert(nw.region.bottom() == 2, 'bottom nw invalid');
+    assert(sw.region.bottom() == 4, 'bottom sw invalid');
+    assert(se.region.bottom() == 4, 'bottom se invalid');
+
+    assert(ne.region.right() == 4, 'right ne invalid');
+    assert(se.region.right() == 4, 'right se invalid');
+    assert(nw.region.right() == 2, 'right nw invalid');
+    assert(sw.region.right() == 2, 'right sw invalid');
+}
+
