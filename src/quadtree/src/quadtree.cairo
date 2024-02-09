@@ -173,6 +173,58 @@ impl Felt252QuadtreeImpl<
         self.insert_at(value, path);
     }
 
+    fn insert_region(ref self: Felt252Quadtree<T, P, C>, value: T, region: Area<C>) {
+        // type interference hack
+        let one: u8 = 1;
+        let one: P = one.into();
+        let bottom = one + one;
+        let four: P = (bottom + bottom).into();
+
+        let mut to_visit = array![one];
+        let mut to_append = ArrayTrait::new();
+
+        loop {
+            // getting a smaller node
+            let path = match to_visit.pop_front() {
+                Option::Some(path) => path,
+                Option::None => {break;},
+            };
+            let (entry, val) = self.elements.entry(path.into());
+            let mut node = match match_nullable(val) {
+                FromNullableResult::Null => panic!("Node does not exist"),
+                FromNullableResult::NotNull(val) => val.unbox(),
+            };
+
+            if node.is_leaf.is_some() {
+                // if the node is a leaf, we add the value to the node or split it
+                // TODO: split the node
+                to_append.append(path);
+
+            } else
+            if region.contains(node.region.bottom_right()) && region.contains(node.region.top_left()) {
+                // if the region contains the node, we add it to the node
+                to_append.append(path);
+            } else {
+                // if the region does not contain the node, we check its children
+                let child_path = node.path * four;
+                to_visit.append(child_path);
+                to_visit.append(child_path + one);
+                to_visit.append(child_path + bottom);
+                to_visit.append(child_path + bottom + one);
+            }
+            
+            let val = nullable_from_box(BoxTrait::new(node));
+            self.elements = entry.finalize(val);
+        };
+
+        loop {
+            match to_visit.pop_front() {
+                Option::Some(path) => self.insert_at(value, path),
+                Option::None => {break;},
+            };
+        }
+    }
+
     fn split(ref self: Felt252Quadtree<T, P, C>, path: P, point: Point<C>) {
         // getting the node from the dictionary without cloning it
         let (entry, val) = self.elements.entry(path.into());

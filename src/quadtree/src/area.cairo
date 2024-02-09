@@ -20,6 +20,8 @@ trait AreaTrait<T> {
     fn left(self: @Area<T>) -> T;
     fn bottom(self: @Area<T>) -> T;
     fn right(self: @Area<T>) -> T;
+    fn top_left(self: @Area<T>) -> @Point<T>;
+    fn bottom_right(self: @Area<T>) -> @Point<T>;
 }
 
 impl AreaImpl<T, +Add<T>, +Copy<T>, +Drop<T>, +PointTrait<T>> of AreaTrait<T> {
@@ -64,5 +66,13 @@ impl AreaImpl<T, +Add<T>, +Copy<T>, +Drop<T>, +PointTrait<T>> of AreaTrait<T> {
 
     fn right(self: @Area<T>) -> T {
         *self.bottom_right.x
+    }
+
+    fn top_left(self: @Area<T>) -> @Point<T> {
+        self.top_left
+    }
+
+    fn bottom_right(self: @Area<T>) -> @Point<T> {
+        self.bottom_right
     }
 }

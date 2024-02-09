@@ -34,7 +34,7 @@ trait QuadtreeTrait<T, P, C> {
     fn values(ref self: Felt252Quadtree<T, P, C>, path: P) -> Array<T>;
     /// Inserts a region into the quadtree.
     fn insert_point(ref self: Felt252Quadtree<T, P, C>, value: T, point: Point<C>);
-    // fn insert_region(ref self: Felt252Quadtree<T, P, C>, value: T, region: Area<C>);
+    fn insert_region(ref self: Felt252Quadtree<T, P, C>, value: T, region: Area<C>);
     fn insert_at(ref self: Felt252Quadtree<T, P, C>, value: T, path: P);
     /// Splits a region into 4 subregions at a given point.
     fn split(ref self: Felt252Quadtree<T, P, C>, path: P, point: Point<C>);
