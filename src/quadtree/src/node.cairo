@@ -62,14 +62,14 @@ impl QuadtreeNodeImpl<
         match self.is_leaf {
             // compare coordinates with the middle of the region in the greater
             Option::Some(middle) => Option::Some(
-                match point.lt_y(middle) {
-                    true => match point.lt_x(middle) {
-                        true => *self.path * four + one.into(),
-                        false => *self.path * four,
+                match middle.lt_y(point) {
+                    false => match middle.lt_x(point) {
+                        false => *self.path * four + one.into(),
+                        true => *self.path * four,
                     },
-                    false => match point.lt_x(middle) {
-                        true => *self.path * four + bottom.into(),
-                        false => *self.path * four + bottom.into() + one.into()
+                    true => match middle.lt_x(point) {
+                        false => *self.path * four + bottom.into(),
+                        true => *self.path * four + bottom.into() + one.into()
                     },
                 }
             ),
@@ -149,10 +149,10 @@ fn test_node_child_at() {
     assert(node.child_at(@PointTrait::new(0, 4)).unwrap() == 0b110, 'sw corner');
     assert(node.child_at(@PointTrait::new(4, 4)).unwrap() == 0b111, 'se corner');
 
-    assert(node.child_at(@PointTrait::new(2, 0)).unwrap() == 0b100, 'ne over nw');
-    assert(node.child_at(@PointTrait::new(0, 2)).unwrap() == 0b110, 'sw over nw');
-    assert(node.child_at(@PointTrait::new(2, 4)).unwrap() == 0b111, 'se over sw');
-    assert(node.child_at(@PointTrait::new(4, 2)).unwrap() == 0b111, 'se over ne');
+    assert(node.child_at(@PointTrait::new(2, 0)).unwrap() == 0b101, 'nw over ne');
+    assert(node.child_at(@PointTrait::new(0, 2)).unwrap() == 0b101, 'nw over sw');
+    assert(node.child_at(@PointTrait::new(2, 4)).unwrap() == 0b110, 'sw over se');
+    assert(node.child_at(@PointTrait::new(4, 2)).unwrap() == 0b100, 'ne over se');
 }
 
 #[test]

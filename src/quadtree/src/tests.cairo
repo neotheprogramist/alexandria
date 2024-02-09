@@ -83,28 +83,28 @@ fn test_rect_region() {
     assert_eq!(*tree.values(0b10111).get(0).unwrap().unbox(), 42);
 }
 
-// #[test]
-// fn test_query_regions() {
-//     // Create a root region at (0, 0) with a width and height of 4
-//     let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
-//     let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region);
-//     tree.split(1, PointTrait::new(2, 2));
-//     tree.split(0b101, PointTrait::new(1, 1));
+#[test]
+fn test_query_regions() {
+    // Create a root region at (0, 0) with a width and height of 4
+    let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
+    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region);
+    tree.split(1, PointTrait::new(2, 2));
+    tree.split(0b101, PointTrait::new(1, 1));
 
-//     // tree.insert_region('whole', AreaTrait::new(PointTrait::new(0, 0), 4, 4));
-//     tree.insert_region('rect', AreaTrait::new(PointTrait::new(1, 0), 3, 2));
-//     // tree.insert_region('nw', AreaTrait::new(PointTrait::new(0, 0), 2, 2));
-//     // tree.insert_region('ne of nw', AreaTrait::new(PointTrait::new(1, 0), 1, 1));
-//     // tree.insert_region('sw of nw', AreaTrait::new(PointTrait::new(0, 1), 1, 1));
-//     // tree.insert_region('se of nw', AreaTrait::new(PointTrait::new(1, 1), 1, 1));
-//     // tree.insert_region('se', AreaTrait::new(PointTrait::new(2, 2), 2, 2));
+    tree.insert_region('whole', AreaTrait::new(PointTrait::new(0, 0), 4, 4));
+    tree.insert_region('rect', AreaTrait::new(PointTrait::new(1, 0), 3, 2));
+    tree.insert_region('nw', AreaTrait::new(PointTrait::new(0, 0), 2, 2));
+    tree.insert_region('ne of nw', AreaTrait::new(PointTrait::new(1, 0), 1, 1));
+    tree.insert_region('sw of nw', AreaTrait::new(PointTrait::new(0, 1), 1, 1));
+    tree.insert_region('se of nw', AreaTrait::new(PointTrait::new(1, 1), 1, 1));
+    tree.insert_region('se', AreaTrait::new(PointTrait::new(2, 2), 2, 2));
 
-//     let query_small = tree.query_regions(PointTrait::new(1, 1));
-//     // assert(*query_small.get(0).unwrap().unbox() == 'whole', 'no region whole');
-//     assert(*query_small.get(1).unwrap().unbox() == 'rect', 'no region rect');
-//     // assert(*query_small.get(2).unwrap().unbox() == 'nw', 'no region nw');
-//     // assert(*query_small.get(3).unwrap().unbox() == 'nw of nw', 'no region nw of nw');
-// }
+    let mut query_small = tree.query_regions(PointTrait::new(2, 1));
+    assert(query_small.pop_front().unwrap() == 'whole', 'no region whole');
+    assert(query_small.pop_front().unwrap() == 'nw', 'no region rect');
+    assert(query_small.pop_front().unwrap() == 'rect', 'no region rect');
+    assert(query_small.pop_front().unwrap() == 'ne of nw', 'no region ne of nw');
+}
 
 #[test]
 fn test_split() {

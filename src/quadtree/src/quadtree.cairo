@@ -107,8 +107,8 @@ impl Felt252QuadtreeImpl<
                 i += 1;
             };
 
+            // get the next node and return the current one to the dictionary
             path = node.child_at(@point);
-
             let val = nullable_from_box(BoxTrait::new(node));
             self.elements = entry.finalize(val);
         };
@@ -162,8 +162,8 @@ impl Felt252QuadtreeImpl<
                 FromNullableResult::NotNull(val) => val.unbox(),
             };
     
+            // get the next node and return the current one to the dictionary
             path = node.child_at(@point);
-
             let val = nullable_from_box(BoxTrait::new(node));
             self.elements = entry.finalize(val);
         };
