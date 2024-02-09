@@ -33,10 +33,7 @@ impl AreaImpl<T, +Add<T>, +Copy<T>, +Drop<T>, +PointTrait<T>> of AreaTrait<T> {
     }
 
     fn new_from_points(top: T, left: T, bottom: T, right: T) -> Area<T> {
-        Area {
-            top_left: Point { x: left, y: top },
-            bottom_right: Point { x: right, y: bottom },
-        }
+        Area { top_left: Point { x: left, y: top }, bottom_right: Point { x: right, y: bottom }, }
     }
 
 
@@ -53,7 +50,7 @@ impl AreaImpl<T, +Add<T>, +Copy<T>, +Drop<T>, +PointTrait<T>> of AreaTrait<T> {
     }
 
     fn top(self: @Area<T>) -> T {
-       *self.top_left.y
+        *self.top_left.y
     }
 
     fn left(self: @Area<T>) -> T {

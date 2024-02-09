@@ -45,6 +45,7 @@ impl Felt252QuadtreeImpl<
     +Drop<P>,
     +Zeroable<P>, // Root has zero path of type P
     +Into<P, felt252>, // Dict key is felt252
+    +Into<C, felt252>, // TODO: remove me
     +Into<u8, P>, // Adding nested level
     +Add<P>, // Nesting the path
     +Mul<P>, // Nesting the path
@@ -128,7 +129,6 @@ impl Felt252QuadtreeImpl<
         let bottom = one + one;
         let four: P = (bottom + bottom).into();
 
-
         let mut path: P = one.into();
         let mut break_flag = false;
 
@@ -150,7 +150,7 @@ impl Felt252QuadtreeImpl<
                     match point.lt_x(@middle) {
                         true => match point.lt_y(@middle) {
                             true => path * four + one.into(),
-                            false => path * four + bottom.into(), 
+                            false => path * four + bottom.into(),
                         },
                         false => match point.lt_y(@middle) {
                             true => path * four,
@@ -187,7 +187,7 @@ impl Felt252QuadtreeImpl<
             // getting a smaller node
             let path = match to_visit.pop_front() {
                 Option::Some(path) => path,
-                Option::None => {break;},
+                Option::None => { break; },
             };
             let (entry, val) = self.elements.entry(path.into());
             let mut node = match match_nullable(val) {
@@ -195,13 +195,16 @@ impl Felt252QuadtreeImpl<
                 FromNullableResult::NotNull(val) => val.unbox(),
             };
 
-            if node.is_leaf.is_some() {
+            if !region
+                .intersects(
+                    @node.region
+                ) { // if the region does not intersect the node's region, we skip it
+            } else if node.is_leaf.is_none() {
                 // if the node is a leaf, we add the value to the node or split it
                 // TODO: split the node
                 to_append.append(path);
-
-            } else
-            if region.contains(node.region.bottom_right()) && region.contains(node.region.top_left()) {
+            } else if region.contains(node.region.bottom_right())
+                && region.contains(node.region.top_left()) {
                 // if the region contains the node, we add it to the node
                 to_append.append(path);
             } else {
@@ -212,15 +215,29 @@ impl Felt252QuadtreeImpl<
                 to_visit.append(child_path + bottom);
                 to_visit.append(child_path + bottom + one);
             }
-            
+
+            // let p: felt252 = path.into();
+            // let x: felt252 = (*node.region.top_left().x()).into();
+            // let y: felt252 = (*node.region.top_left().y()).into();
+            // let tv = to_visit.len();
+            // let ta = to_append.len();
+
+            // '-----'.print();
+            // p.print();
+            // x.print();
+            // y.print();
+            // tv.print();
+            // ta.print();
+            // '-----'.print();
+
             let val = nullable_from_box(BoxTrait::new(node));
             self.elements = entry.finalize(val);
         };
 
         loop {
-            match to_visit.pop_front() {
+            match to_append.pop_front() {
                 Option::Some(path) => self.insert_at(value, path),
-                Option::None => {break;},
+                Option::None => { break; },
             };
         }
     }
@@ -238,9 +255,9 @@ impl Felt252QuadtreeImpl<
 
         // preparing regions for the new nodes
         let mut regions = array![
-            AreaTrait::new_from_points(area.top(), *point.x(), *point.y(), area.right()),    // ne
-            AreaTrait::new_from_points(area.top(), area.left(), *point.y(), *point.x()),     // nw
-            AreaTrait::new_from_points(*point.y(), area.left(), area.bottom(), *point.x()),  // sw
+            AreaTrait::new_from_points(area.top(), *point.x(), *point.y(), area.right()), // ne
+            AreaTrait::new_from_points(area.top(), area.left(), *point.y(), *point.x()), // nw
+            AreaTrait::new_from_points(*point.y(), area.left(), area.bottom(), *point.x()), // sw
             AreaTrait::new_from_points(*point.y(), *point.x(), area.bottom(), area.right()), // se
         ];
 
@@ -248,7 +265,6 @@ impl Felt252QuadtreeImpl<
         parent.is_leaf = Option::Some(point);
         let val = nullable_from_box(BoxTrait::new(parent));
         self.elements = entry.finalize(val);
-
 
         // reused multipiers for the path and mask
         let four: u8 = 4;

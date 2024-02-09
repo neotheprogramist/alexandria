@@ -21,7 +21,6 @@ fn test_root() {
     assert_eq!(*tree.values(1).at(1), 2137);
 }
 
-
 #[test]
 fn test_insert_point() {
     // Create a root region at (0, 0) with a width and height of 4
@@ -35,6 +34,54 @@ fn test_insert_point() {
     // and retrieved from it, in the same fashion
     assert(tree.values(0b101).get(0).is_some(), 'nw does not exist');
 }
+
+#[test]
+fn test_insert_region() {
+    // Create a root region at (0, 0) with a width and height of 4
+    let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
+    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region);
+    tree.split(1, PointTrait::new(2, 2));
+    tree.split(0b101, PointTrait::new(1, 1));
+
+    // Should insert just into the nw region
+    tree.insert_region(42, AreaTrait::new(PointTrait::new(0, 0), 2, 2));
+
+    assert_eq!(*tree.values(0b101).get(0).unwrap().unbox(), 42);
+
+    assert(tree.values(1).is_empty(), 'root node not empty');
+    assert(tree.values(0b100).is_empty(), 'ne node not empty');
+    assert(tree.values(0b110).is_empty(), 'se node not empty');
+    assert(tree.values(0b111).is_empty(), 'sw node not empty');
+
+    assert(tree.values(0b10100).is_empty(), 'ne of nw node not empty');
+    assert(tree.values(0b10101).is_empty(), 'ne of nw node not empty');
+    assert(tree.values(0b10110).is_empty(), 'se of nw node not empty');
+    assert(tree.values(0b10111).is_empty(), 'sw of nw node not empty');
+}
+
+#[test]
+fn test_rect_region() {
+    // Create a root region at (0, 0) with a width and height of 4
+    let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
+    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region);
+    tree.split(1, PointTrait::new(2, 2));
+    tree.split(0b101, PointTrait::new(1, 1));
+
+    // Should insert into the ne and right half of the nw region
+    tree.insert_region(42, AreaTrait::new(PointTrait::new(1, 0), 3, 2));
+
+    assert(tree.values(1).is_empty(), 'root node not empty');
+    assert_eq!(*tree.values(0b100).get(0).unwrap().unbox(), 42);
+    assert(tree.values(0b101).is_empty(), 'ne node not empty');
+    assert(tree.values(0b110).is_empty(), 'se node not empty');
+    assert(tree.values(0b111).is_empty(), 'sw node not empty');
+
+    assert_eq!(*tree.values(0b10100).get(0).unwrap().unbox(), 42);
+    assert(tree.values(0b10101).is_empty(), 'ne of nw node not empty');
+    assert(tree.values(0b10110).is_empty(), 'se of nw node not empty');
+    assert_eq!(*tree.values(0b10111).get(0).unwrap().unbox(), 42);
+}
+
 
 #[test]
 fn test_split() {
@@ -68,7 +115,7 @@ fn test_split_too_many() {
 
 
 #[test]
-fn point_test() {
+fn test_point() {
     let p = @PointTrait::new(21, 37);
     assert_eq!(*p.x(), 21);
     assert_eq!(*p.y(), 37);
@@ -92,10 +139,11 @@ fn point_test() {
 
 
 #[test]
-fn area_test() {
+fn test_area() {
     let p = PointTrait::new(21, 37);
     let a = AreaTrait::new(p, 10, 10);
 
+    assert(a.intersects(@a), 'not intersecting with itself');
     assert(!a.intersects(@AreaTrait::new(PointTrait::new(10, 37), 10, 10)), 'left intersects');
     assert(!a.intersects(@AreaTrait::new(PointTrait::new(32, 37), 10, 10)), 'right intersects');
     assert(!a.intersects(@AreaTrait::new(PointTrait::new(21, 26), 10, 10)), 'top intersects');
