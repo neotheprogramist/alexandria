@@ -43,7 +43,8 @@ impl Felt252QuadtreeImpl<
         > {
             path: 1_u8.into(),
             region,
-            values: ArrayTrait::<T>::new().span(),
+            values: ArrayTrait::new().span(),
+            members: ArrayTrait::new().span(),
             is_leaf: Option::None,
         };
         // creating the dictionary
@@ -65,14 +66,25 @@ impl Felt252QuadtreeImpl<
 
         // getting the values from the node
         let mut result = ArrayTrait::new();
-        let mut i = 0;
-        loop {
-            if i == node.values.len() {
-                break;
-            }
-            result.append(*node.values[i]);
-            i += 1;
+        result.append_span(node.values);
+
+        // returning the node to the dictionary
+        let val = nullable_from_box(BoxTrait::new(node));
+        self.elements = entry.finalize(val);
+        result
+    }
+
+    fn points(ref self: Felt252Quadtree<T, P, C>, path: P) -> Array<Point<C>> {
+        // getting the node from the dictionary without cloning it
+        let (entry, val) = self.elements.entry(path.into());
+        let node = match match_nullable(val) {
+            FromNullableResult::Null => panic!("Node does not exist"),
+            FromNullableResult::NotNull(val) => val.unbox(),
         };
+
+        // getting the points from the node
+        let mut result = ArrayTrait::new();
+        result.append_span(node.members);
 
         // returning the node to the dictionary
         let val = nullable_from_box(BoxTrait::new(node));
@@ -115,6 +127,19 @@ impl Felt252QuadtreeImpl<
         values
     }
 
+    fn closes_points(ref self: Felt252Quadtree<T, P, C>, point: Point<C>, n: usize) -> Array<T> {
+        // loosely based on https://www.cs.umd.edu/%7Emeesh/cmsc420/ContentBook/FormalNotes/neighbor.pdf
+        let confirmed_closest = ArrayTrait::new();
+        // let found = ArrayTrait::new();
+        // let visited = ArrayTrait::new();
+
+        loop {
+            if confirmed_closest.len() == n {
+                break confirmed_closest;
+            }
+        }
+    }
+
     fn insert_at(ref self: Felt252Quadtree<T, P, C>, value: T, path: P) {
         // getting the node from the dictionary without cloning it
         let (entry, val) = self.elements.entry(path.into());
@@ -141,32 +166,37 @@ impl Felt252QuadtreeImpl<
         self.elements = entry.finalize(val);
     }
 
-    fn insert_point(ref self: Felt252Quadtree<T, P, C>, value: T, point: Point<C>) {
-        let mut last_path: P = 1_u8.into();
-        let mut path = Option::Some(last_path);
+    fn insert_point(ref self: Felt252Quadtree<T, P, C>, point: Point<C>) {
+        let mut path: P = 1_u8.into();
 
         loop {
             // get the node from the dictionary without cloning it
-            let (entry, val) = match path {
-                Option::Some(path) => {
-                    last_path = path;
-                    self.elements.entry(path.into())
-                },
-                // break if the last node was a leaf
-                Option::None => { break; },
-            };
+            let (entry, val) = self.elements.entry(path.into());
             let mut node = match match_nullable(val) {
                 FromNullableResult::Null => panic!("Node does not exist"),
                 FromNullableResult::NotNull(val) => val.unbox(),
             };
-    
+
             // get the next node and return the current one to the dictionary
-            path = node.child_at(@point);
+            path = match node.child_at(@point) {
+                Option::Some(path) => path,
+                Option::None => {
+                    // adding the value if the node is a leaf
+                    let mut new = ArrayTrait::new();
+                    new.append_span(node.members);
+                    new.append(point);
+                    node.members = new.span();
+
+                    let val = nullable_from_box(BoxTrait::new(node));
+                    self.elements = entry.finalize(val);
+
+                    break;
+                }
+            };
+
             let val = nullable_from_box(BoxTrait::new(node));
             self.elements = entry.finalize(val);
         };
-
-        self.insert_at(value, last_path);
     }
 
     fn insert_region(ref self: Felt252Quadtree<T, P, C>, value: T, region: Area<C>) {

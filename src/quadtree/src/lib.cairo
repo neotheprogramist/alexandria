@@ -33,10 +33,13 @@ trait QuadtreeTrait<T, P, C> {
     fn new(region: Area<C>) -> Felt252Quadtree<T, P, C>;
     /// Gets values at the a given path.
     fn values(ref self: Felt252Quadtree<T, P, C>, path: P) -> Array<T>;
+    fn points(ref self: Felt252Quadtree<T, P, C>, path: P) -> Array<Point<C>>;
+    /// Closest points to a given point.
+    fn closes_points(ref self: Felt252Quadtree<T, P, C>, point: Point<C>, n: usize) -> Array<T>;
     /// Queries the quadtree for the regions that contain a given point.
     fn query_regions(ref self: Felt252Quadtree<T, P, C>, point: Point<C>) -> Array<T>;
     /// Inserts a region into the quadtree.
-    fn insert_point(ref self: Felt252Quadtree<T, P, C>, value: T, point: Point<C>);
+    fn insert_point(ref self: Felt252Quadtree<T, P, C>, point: Point<C>);
     fn insert_region(ref self: Felt252Quadtree<T, P, C>, value: T, region: Area<C>);
     fn insert_at(ref self: Felt252Quadtree<T, P, C>, value: T, path: P);
     /// Splits a region into 4 subregions at a given point.

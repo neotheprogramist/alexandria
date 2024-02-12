@@ -8,6 +8,7 @@ use quadtree::point::{Point, PointTrait, PointImpl};
 struct QuadtreeNode<T, P, C> {
     /// Values for a given region of the quadtree.
     values: Span<T>,
+    members: Span<Point<C>>,
     /// The region of the grometry that this node represents.
     region: Area<C>,
     /// The path of the node in the quadtree, the first bit is always a 1 and the
@@ -20,7 +21,13 @@ struct QuadtreeNode<T, P, C> {
 }
 
 trait QuadtreeNodeTrait<T, P, C> {
+    /// Creates a leaf node with the given region and path.
     fn new(region: Area<C>, path: P) -> QuadtreeNode<T, P, C>;
+    /// Returns the child containing the given point.
+    /// If the node is a leaf, it returns None.
+    /// Assumes the point is within the region of the node.
+    /// If the point is on the border of the region, it returns the child
+    /// with greater coordinates - top first, then left.
     fn child_at(self: @QuadtreeNode<T, P, C>, point: @Point<C>) -> Option<P>;
     fn split_at(ref self: QuadtreeNode<T, P, C>, point: Point<C>) -> Array<QuadtreeNode<T, P, C>>;
 }
@@ -41,18 +48,18 @@ impl QuadtreeNodeImpl<
     +PointTrait<C>, // Present in the area
     +AreaTrait<C>,
 > of QuadtreeNodeTrait<T, P, C> {
-    /// Creates a leaf node with the given region and path.
     fn new(region: Area<C>, path: P) -> QuadtreeNode<T, P, C> {
         QuadtreeNode::<
             T, P, C
-        > { path, region, values: ArrayTrait::new().span(), is_leaf: Option::None, }
+        > {
+            path,
+            region,
+            values: ArrayTrait::new().span(),
+            members: ArrayTrait::new().span(),
+            is_leaf: Option::None,
+        }
     }
 
-    /// Returns the child containing the given point.
-    /// If the node is a leaf, it returns None.
-    /// Assumes the point is within the region of the node.
-    /// If the point is on the border of the region, it returns the child
-    /// with greater coordinates - top first, then left.
     fn child_at(self: @QuadtreeNode<T, P, C>, point: @Point<C>) -> Option<P> {
         // type interference hack
         let one: u8 = 1;
@@ -118,6 +125,7 @@ impl QuadtreeNodeImpl<
                 path,
                 region: regions.pop_front().unwrap(),
                 values: ArrayTrait::new().span(),
+                members: ArrayTrait::new().span(),
                 is_leaf: Option::None,
             };
 
@@ -163,6 +171,7 @@ fn test_node_split() {
         path: 1,
         region: AreaTrait::new(PointTrait::new(0, 0), 4, 4),
         values: ArrayTrait::new().span(),
+        members: ArrayTrait::new().span(),
         is_leaf: Option::None,
     };
 

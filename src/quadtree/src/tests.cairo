@@ -30,10 +30,10 @@ fn test_insert_point() {
     tree.split(1, PointTrait::new(2, 2));
 
     // Values can be inserted into the tree (at any place for now)
-    tree.insert_point(42, PointTrait::new(1, 1));
+    tree.insert_point(PointTrait::new(1, 1));
 
     // and retrieved from it, in the same fashion
-    assert(tree.values(0b101).get(0).is_some(), 'nw does not exist');
+    assert(tree.points(0b101).get(0).is_some(), 'nw does not exist');
 }
 
 #[test]

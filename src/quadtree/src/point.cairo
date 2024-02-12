@@ -1,6 +1,6 @@
 /// Represents a 2D point in the quadtree
 use core::traits::TryInto;
-#[derive(Drop, Clone, Copy)]
+#[derive(Drop, Copy)]
 struct Point<T> {
     x: T,
     y: T,
@@ -164,7 +164,9 @@ impl PointFelt252Impl of PointTrait<felt252> {
         y < other_y
     }
 
-    fn distance_to_farther_x(self: @Point<felt252>, first: @Point<felt252>, second: @Point<felt252>) -> felt252 {
+    fn distance_to_farther_x(
+        self: @Point<felt252>, first: @Point<felt252>, second: @Point<felt252>
+    ) -> felt252 {
         let self_x: u256 = (*self.x).into();
         let first_x: u256 = (*first.x).into();
         let second_x: u256 = (*second.x).into();
@@ -184,7 +186,9 @@ impl PointFelt252Impl of PointTrait<felt252> {
         }
     }
 
-    fn distance_to_farther_y(self: @Point<felt252>, first: @Point<felt252>, second: @Point<felt252>) -> felt252 {
+    fn distance_to_farther_y(
+        self: @Point<felt252>, first: @Point<felt252>, second: @Point<felt252>
+    ) -> felt252 {
         let self_y: u256 = (*self.y).into();
         let first_y: u256 = (*first.y).into();
         let second_y: u256 = (*second.y).into();
