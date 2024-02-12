@@ -32,16 +32,16 @@ impl Felt252QuadtreeImpl<
     +Into<u8, P>, // Adding nested level
     +Add<P>, // Nesting the path
     +Mul<P>, // Nesting the path
-    +Add<C>, // Needed for area
     +PointTrait<C>, // Present in the area
+    +AreaTrait<C>,
 > of QuadtreeTrait<T, P, C> {
     fn new(region: Area<C>) -> Felt252Quadtree<T, P, C> {
         // constructng the root node
-        let root_path: u8 = 1;
+        let root_path = 1_u8;
         let root = QuadtreeNode::<
             T, P, C
         > {
-            path: root_path.into(),
+            path: 1_u8.into(),
             region,
             values: ArrayTrait::<T>::new().span(),
             is_leaf: Option::None,
@@ -81,8 +81,7 @@ impl Felt252QuadtreeImpl<
     }
 
     fn query_regions(ref self: Felt252Quadtree<T, P, C>, point: Point<C>) -> Array<T> {
-        let root_path: u8 = 1;
-        let mut path = Option::Some(root_path.into());
+        let mut path = Option::Some(1_u8.into());
         let mut values = ArrayTrait::new();
 
         loop {
@@ -143,8 +142,7 @@ impl Felt252QuadtreeImpl<
     }
 
     fn insert_point(ref self: Felt252Quadtree<T, P, C>, value: T, point: Point<C>) {
-        let root_path: u8 = 1;
-        let mut last_path: P = root_path.into();
+        let mut last_path: P = 1_u8.into();
         let mut path = Option::Some(last_path);
 
         loop {
@@ -172,13 +170,7 @@ impl Felt252QuadtreeImpl<
     }
 
     fn insert_region(ref self: Felt252Quadtree<T, P, C>, value: T, region: Area<C>) {
-        // type interference hack
-        let one: u8 = 1;
-        let one: P = one.into();
-        let bottom = one + one;
-        let four: P = (bottom + bottom).into();
-
-        let mut to_visit = array![one];
+        let mut to_visit = array![1_u8.into()];
         let mut to_append = ArrayTrait::new();
 
         loop {
@@ -207,11 +199,11 @@ impl Felt252QuadtreeImpl<
                 to_append.append(path);
             } else {
                 // if the region does not contain the node, we check its children
-                let child_path = node.path * four;
+                let child_path = node.path * 4_u8.into();
                 to_visit.append(child_path);
-                to_visit.append(child_path + one);
-                to_visit.append(child_path + bottom);
-                to_visit.append(child_path + bottom + one);
+                to_visit.append(child_path + 1_u8.into());
+                to_visit.append(child_path + 2_u8.into());
+                to_visit.append(child_path + 3_u8.into());
             }
 
             let val = nullable_from_box(BoxTrait::new(node));

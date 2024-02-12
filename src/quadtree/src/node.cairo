@@ -38,8 +38,8 @@ impl QuadtreeNodeImpl<
     +Into<u8, P>, // Adding nested level
     +Add<P>, // Nesting the path
     +Mul<P>, // Nesting the path
-    +Add<C>, // Needed for area
     +PointTrait<C>, // Present in the area
+    +AreaTrait<C>,
 > of QuadtreeNodeTrait<T, P, C> {
     /// Creates a leaf node with the given region and path.
     fn new(region: Area<C>, path: P) -> QuadtreeNode<T, P, C> {
