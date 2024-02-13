@@ -1,3 +1,5 @@
+use core::debug::PrintTrait;
+use alexandria_data_structures::array_ext::SpanTraitExt;
 use core::option::OptionTrait;
 use core::traits::Into;
 use core::traits::TryInto;
@@ -8,6 +10,8 @@ use core::nullable::{nullable_from_box, match_nullable, FromNullableResult};
 use core::array::ArrayTrait;
 use core::zeroable::Zeroable;
 
+use alexandria_data_structures::byte_array_ext::{ByteArrayIntoArrayU8, SpanU8IntoBytearray};
+
 use quadtree::area::{AreaTrait, Area, AreaImpl};
 use quadtree::point::{Point, PointTrait, PointImpl};
 use quadtree::{QuadtreeTrait, QuadtreeNode, QuadtreeNodeTrait};
@@ -15,6 +19,7 @@ use quadtree::{QuadtreeTrait, QuadtreeNode, QuadtreeNodeTrait};
 /// All the branches and leaves of the quadtree are stored in a dictionary.
 struct Felt252Quadtree<T, P, C> {
     elements: Felt252Dict<Nullable<QuadtreeNode<T, P, C>>>,
+    spillover_threhold: usize
 }
 
 
@@ -30,26 +35,22 @@ impl Felt252QuadtreeImpl<
     +Drop<P>,
     +Into<P, felt252>, // Dict key is felt252
     +Into<u8, P>, // Adding nested level
+    +Into<u8, C>, // TMP
     +Add<P>, // Nesting the path
     +Mul<P>, // Nesting the path
+    +Sub<P>, // QuadtreeNodeTrait
     +PointTrait<C>, // Present in the area
     +AreaTrait<C>,
+    +PartialEq<Point<C>>,
 > of QuadtreeTrait<T, P, C> {
-    fn new(region: Area<C>) -> Felt252Quadtree<T, P, C> {
+    fn new(region: Area<C>, spillover_threhold: usize) -> Felt252Quadtree<T, P, C> {
         // constructng the root node
         let root_path = 1_u8;
-        let root = QuadtreeNode::<
-            T, P, C
-        > {
-            path: 1_u8.into(),
-            region,
-            values: ArrayTrait::new().span(),
-            members: ArrayTrait::new().span(),
-            is_leaf: Option::None,
-        };
+        let root = QuadtreeNodeTrait::new(region, 1_u8.into());
+
         // creating the dictionary
         let elements = Default::default();
-        let mut tree = Felt252Quadtree { elements };
+        let mut tree = Felt252Quadtree { elements, spillover_threhold };
 
         // inserting it at root
         tree.elements.insert(root_path.into(), nullable_from_box(BoxTrait::new(root)));
@@ -187,8 +188,21 @@ impl Felt252QuadtreeImpl<
                     new.append(point);
                     node.members = new.span();
 
+                    let did_spill = match node.members.len() > self.spillover_threhold {
+                        true => match new.span().dedup().len() >= 2 { // if has at least 2 unique points
+                            true => Option::Some(node.region.center()),
+                            false => Option::None,
+                        },
+                        false => Option::None,
+                    };
+
                     let val = nullable_from_box(BoxTrait::new(node));
                     self.elements = entry.finalize(val);
+
+                    // splitting the node if it has too many points
+                    if did_spill.is_some() {
+                        self.split(path, did_spill.unwrap());
+                    }
 
                     break;
                 }
@@ -219,7 +233,7 @@ impl Felt252QuadtreeImpl<
                 .intersects(
                     @node.region
                 ) { // if the region does not intersect the node's region, we skip it
-            } else if node.is_leaf.is_none() {
+            } else if !node.is_leaf() {
                 // if the node is a leaf, we add the value to the node or split it
                 // TODO: split the node
                 to_append.append(path);
@@ -272,6 +286,13 @@ impl Felt252QuadtreeImpl<
                 Option::None => { break; },
             };
         };
+    }
+
+    fn exists(ref self: Felt252Quadtree<T, P, C>, path: P) -> bool {
+        let (entry, val) = self.elements.entry(path.into());
+        let exists = !val.is_null();
+        self.elements = entry.finalize(val);
+        exists
     }
 }
 

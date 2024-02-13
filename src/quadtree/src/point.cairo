@@ -1,6 +1,6 @@
 /// Represents a 2D point in the quadtree
 use core::traits::TryInto;
-#[derive(Drop, Copy)]
+#[derive(Drop, Copy, PartialEq, Default)]
 struct Point<T> {
     x: T,
     y: T,

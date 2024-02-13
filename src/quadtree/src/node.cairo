@@ -1,3 +1,8 @@
+use core::box::BoxTrait;
+use core::clone::Clone;
+use core::traits::TryInto;
+use core::traits::Into;
+use core::array::SpanTrait;
 use core::option::OptionTrait;
 use core::zeroable::Zeroable;
 use quadtree::area::{AreaTrait, Area, AreaImpl};
@@ -17,7 +22,15 @@ struct QuadtreeNode<T, P, C> {
     /// 0b11111 is the bottom right quadrant of the bottom right.
     path: P,
     /// Whether the node is a leaf or not.
-    is_leaf: Option<Point<C>>,
+    split: QuadtreeNodeSplit<C>,
+}
+
+#[derive(PartialEq, Drop, Copy)]
+enum QuadtreeNodeSplit<C> {
+    NotSplitYet,
+    SplitAt: Point<C>,
+// Requested to split, but all the nodes are the same, 
+// which would result in infinite recursive splitting
 }
 
 trait QuadtreeNodeTrait<T, P, C> {
@@ -30,6 +43,7 @@ trait QuadtreeNodeTrait<T, P, C> {
     /// with greater coordinates - top first, then left.
     fn child_at(self: @QuadtreeNode<T, P, C>, point: @Point<C>) -> Option<P>;
     fn split_at(ref self: QuadtreeNode<T, P, C>, point: Point<C>) -> Array<QuadtreeNode<T, P, C>>;
+    fn is_leaf(self: @QuadtreeNode<T, P, C>) -> bool;
 }
 
 impl QuadtreeNodeImpl<
@@ -43,7 +57,9 @@ impl QuadtreeNodeImpl<
     +Drop<C>,
     +Drop<P>,
     +Into<u8, P>, // Adding nested level
+    +Into<u8, C>, // TMP
     +Add<P>, // Nesting the path
+    +Sub<P>, // Parents path
     +Mul<P>, // Nesting the path
     +PointTrait<C>, // Present in the area
     +AreaTrait<C>,
@@ -56,31 +72,26 @@ impl QuadtreeNodeImpl<
             region,
             values: ArrayTrait::new().span(),
             members: ArrayTrait::new().span(),
-            is_leaf: Option::None,
+            split: QuadtreeNodeSplit::NotSplitYet,
         }
     }
 
     fn child_at(self: @QuadtreeNode<T, P, C>, point: @Point<C>) -> Option<P> {
-        // type interference hack
-        let one: u8 = 1;
-        let bottom = one + one;
-        let four: P = (bottom + bottom).into();
-
-        match self.is_leaf {
+        match self.split.clone() {
             // compare coordinates with the middle of the region in the greater
-            Option::Some(middle) => Option::Some(
+            QuadtreeNodeSplit::SplitAt(middle) => Option::Some(
                 match middle.lt_y(point) {
                     false => match middle.lt_x(point) {
-                        false => *self.path * four + one.into(),
-                        true => *self.path * four,
+                        true => *self.path * 4_u8.into() ,
+                        false => *self.path * 4_u8.into() + 1_u8.into(),
                     },
                     true => match middle.lt_x(point) {
-                        false => *self.path * four + bottom.into(),
-                        true => *self.path * four + bottom.into() + one.into()
+                        false => *self.path * 4_u8.into() + 2_u8.into(),
+                        true => *self.path * 4_u8.into()+ 3_u8.into()
                     },
                 }
             ),
-            Option::None => {
+            _ => {
                 // return none if the node is a leaf
                 return Option::None;
             },
@@ -89,8 +100,8 @@ impl QuadtreeNodeImpl<
 
     fn split_at(ref self: QuadtreeNode<T, P, C>, point: Point<C>) -> Array<QuadtreeNode<T, P, C>> {
         // returning the node to the dictionary
-        assert(self.is_leaf.is_none(), 'Node is not a leaf');
-        self.is_leaf = Option::Some(point);
+        assert(!self.is_leaf(), 'Node is not a leaf');
+        self.split = QuadtreeNodeSplit::SplitAt(point);
 
         // retrieving the region of the parent node
         let area = self.region;
@@ -102,6 +113,35 @@ impl QuadtreeNodeImpl<
             AreaTrait::new_from_points(*point.y(), area.left(), area.bottom(), *point.x()), // sw
             AreaTrait::new_from_points(*point.y(), *point.x(), area.bottom(), area.right()), // se
         ];
+
+        // split members into the new nodes
+        // let mut members = self.members.clone();
+        let mut members = array![
+            PointTrait::new(1_u8.into(), 1_u8.into()),
+            PointTrait::new(1_u8.into(), 1_u8.into()),
+            PointTrait::new(1_u8.into(), 1_u8.into()),
+        ];
+        self.members = ArrayTrait::new().span();
+        
+        let el = match members.pop_front() {
+            Option::Some(member) => member.clone(),
+            Option::None => { panic(array!['in code']) },
+        };
+        let path = self.child_at(@el);
+
+        let el = match members.pop_front() {
+            Option::Some(member) => member.clone(),
+            Option::None => { panic(array!['in code']) },
+        };
+        let path = self.child_at(@el);
+
+        {
+            let elel = match members.pop_front() {
+                Option::Some(member) => member.clone(),
+                Option::None => { panic(array!['in loop']) },
+            };
+            let path = self.child_at(@elel);
+        };
 
         // reused multipiers for the path and mask
         let four: u8 = 4;
@@ -119,15 +159,7 @@ impl QuadtreeNodeImpl<
             let path = self.path * four + i.into();
 
             // creating the leaf node
-            let node = QuadtreeNode::<
-                T, P, C
-            > {
-                path,
-                region: regions.pop_front().unwrap(),
-                values: ArrayTrait::new().span(),
-                members: ArrayTrait::new().span(),
-                is_leaf: Option::None,
-            };
+            let node = QuadtreeNodeTrait::new(regions.pop_front().unwrap(), path);
 
             // inserting the new node to the dictionary
             children.append(node);
@@ -136,12 +168,20 @@ impl QuadtreeNodeImpl<
 
         children
     }
+
+    fn is_leaf(self: @QuadtreeNode<T, P, C>) -> bool {
+        match self.split {
+            QuadtreeNodeSplit::NotSplitYet => false,
+            // QuadtreeNodeSplit::AllNodesIn => false,
+            _ => true,
+        }
+    }
 }
 
 #[test]
 fn test_node_child_at() {
     let mut node = QuadtreeNodeTrait::<
-        i32, u8, i32
+        i32, u8, u32
     >::new(AreaTrait::new(PointTrait::new(0, 0), 4, 4), 1);
 
     assert(node.child_at(@PointTrait::new(1, 1)).is_none(), 'child before split');
@@ -164,15 +204,52 @@ fn test_node_child_at() {
 }
 
 #[test]
+fn test_node_child_at_loop() {
+    // let mut self = QuadtreeNodeTrait::<
+    //     i32, u8, u32
+    // >::new(AreaTrait::new(PointTrait::new(0, 0), 4, 4), 1);
+
+    // let mut members = array![
+    //     PointTrait::new(1_u8.into(), 1_u8.into()),
+    //     PointTrait::new(1_u8.into(), 1_u8.into()),
+    //     PointTrait::new(1_u8.into(), 1_u8.into()),
+    //     PointTrait::new(1_u8.into(), 1_u8.into()),
+    //     PointTrait::new(1_u8.into(), 1_u8.into()),
+    //     PointTrait::new(1_u8.into(), 1_u8.into()),
+    // ].span();
+    // self.members = ArrayTrait::new().span();
+    
+    // let el = match members.pop_front() {
+    //     Option::Some(member) => member.clone(),
+    //     Option::None => { panic(array!['in code']) },
+    // };
+    // let path = self.child_at(@el);
+
+    // let el = match members.pop_front() {
+    //     Option::Some(member) => member.clone(),
+    //     Option::None => { panic(array!['in code']) },
+    // };
+    // let path = self.child_at(@el);
+
+    // loop {
+    //     let el = match members.pop_front() {
+    //         Option::Some(member) => member.clone(),
+    //         Option::None => { panic(array!['in loop']) },
+    //     };
+    //     let path = self.child_at(@el);
+    // };
+}
+
+#[test]
 fn test_node_split() {
     let mut root = QuadtreeNode::<
-        i32, u8, i32
+        i32, u8, u32
     > {
         path: 1,
         region: AreaTrait::new(PointTrait::new(0, 0), 4, 4),
         values: ArrayTrait::new().span(),
         members: ArrayTrait::new().span(),
-        is_leaf: Option::None,
+        split: QuadtreeNodeSplit::NotSplitYet,
     };
 
     let children = root.split_at(PointTrait::new(2, 2));

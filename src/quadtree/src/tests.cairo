@@ -1,3 +1,5 @@
+use core::debug::PrintTrait;
+use core::traits::Into;
 use core::box::BoxTrait;
 use core::option::OptionTrait;
 use core::array::ArrayTrait;
@@ -8,11 +10,35 @@ use quadtree::point::{Point, PointTrait};
 
 
 #[test]
+fn test_spillover() {
+    // Create a root region at (0, 0) with a width and height of 4
+    let root_region = AreaTrait::new(PointTrait::new(0, 0), 12, 12);
+    // Every node has at most 2 nodes
+    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region, 2);
+
+    // Values can be inserted into the tree (at any place for now)
+    tree.insert_point(PointTrait::new(1, 1));
+    tree.insert_point(PointTrait::new(1, 1));
+    tree.insert_point(PointTrait::new(1, 1));
+
+    assert(tree.points(1).len() == 3, 'invalid number in 1');
+    assert(!tree.exists(0b101), 'nw exists before split');
+
+    tree.insert_point(PointTrait::new(1, 2));
+
+    let a: felt252 = tree.points(0b101).len().into();
+    a.print();
+
+    assert(tree.points(0b101).len() == 2, 'invalid number in 0b101');
+    assert(tree.exists(0b101), 'nw not existing after spill');
+}
+
+#[test]
 fn test_root() {
     // Create a root region at (0, 0) with a width and height of 4
     let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
     // Create a new quadtree on that region
-    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region);
+    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region, 1);
 
     // Values can be inserted into the tree (at any place for now)
     tree.insert_at(42, 1);
@@ -26,7 +52,7 @@ fn test_root() {
 fn test_insert_point() {
     // Create a root region at (0, 0) with a width and height of 4
     let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
-    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region);
+    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region, 1);
     tree.split(1, PointTrait::new(2, 2));
 
     // Values can be inserted into the tree (at any place for now)
@@ -40,7 +66,7 @@ fn test_insert_point() {
 fn test_insert_region() {
     // Create a root region at (0, 0) with a width and height of 4
     let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
-    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region);
+    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region, 1);
     tree.split(1, PointTrait::new(2, 2));
     tree.split(0b101, PointTrait::new(1, 1));
 
@@ -64,7 +90,7 @@ fn test_insert_region() {
 fn test_rect_region() {
     // Create a root region at (0, 0) with a width and height of 4
     let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
-    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region);
+    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region, 1);
     tree.split(1, PointTrait::new(2, 2));
     tree.split(0b101, PointTrait::new(1, 1));
 
@@ -87,7 +113,7 @@ fn test_rect_region() {
 fn test_query_regions() {
     // Create a root region at (0, 0) with a width and height of 4
     let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
-    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region);
+    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region, 1);
     tree.split(1, PointTrait::new(2, 2));
     tree.split(0b101, PointTrait::new(1, 1));
 
@@ -109,7 +135,7 @@ fn test_query_regions() {
 #[test]
 fn test_split() {
     let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
-    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region);
+    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region, 100);
     tree.split(1, PointTrait::new(1, 1));
     tree.split(0b101, PointTrait::new(1, 1));
 
@@ -130,7 +156,7 @@ fn test_split() {
 #[should_panic]
 fn test_split_too_many() {
     let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
-    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region);
+    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region, 1);
     tree.split(1, PointTrait::new(1, 1));
 
     assert(tree.values(8).is_empty(), 'out of bounds exists');
@@ -164,7 +190,7 @@ fn test_point() {
 #[test]
 fn test_area() {
     let p = PointTrait::new(21, 37);
-    let a = AreaTrait::new(p, 10, 10);
+    let a = AreaTrait::<u32>::new(p, 10, 10);
 
     assert(a.intersects(@a), 'not intersecting with itself');
     assert(!a.intersects(@AreaTrait::new(PointTrait::new(10, 37), 10, 10)), 'left intersects');

@@ -29,8 +29,11 @@ use node::{QuadtreeNode, QuadtreeNodeTrait};
 /// - T: The type of the value stored in the quadtree
 /// - P: The type of the dictionary key used to access the quadtree
 trait QuadtreeTrait<T, P, C> {
-    /// Creates a new uadtree instance.
-    fn new(region: Area<C>) -> Felt252Quadtree<T, P, C>;
+    /// Creates a new quadtree instance, all the points in the quadtree 
+    /// have to be inside of passed region.
+    /// If number of points in a regin exceeds the `spillover_threhold` the node 
+    /// is split into 4 children, 2 means every node has at most 2 points.
+    fn new(region: Area<C>, spillover_threhold: usize) -> Felt252Quadtree<T, P, C>;
     /// Gets values at the a given path.
     fn values(ref self: Felt252Quadtree<T, P, C>, path: P) -> Array<T>;
     fn points(ref self: Felt252Quadtree<T, P, C>, path: P) -> Array<Point<C>>;
@@ -44,4 +47,5 @@ trait QuadtreeTrait<T, P, C> {
     fn insert_at(ref self: Felt252Quadtree<T, P, C>, value: T, path: P);
     /// Splits a region into 4 subregions at a given point.
     fn split(ref self: Felt252Quadtree<T, P, C>, path: P, point: Point<C>);
+    fn exists(ref self: Felt252Quadtree<T, P, C>, path: P) -> bool;
 }
