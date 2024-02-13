@@ -35,7 +35,6 @@ impl Felt252QuadtreeImpl<
     +Drop<P>,
     +Into<P, felt252>, // Dict key is felt252
     +Into<u8, P>, // Adding nested level
-    +Into<u8, C>, // TMP
     +Add<P>, // Nesting the path
     +Mul<P>, // Nesting the path
     +Sub<P>, // QuadtreeNodeTrait

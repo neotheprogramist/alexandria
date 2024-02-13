@@ -63,8 +63,7 @@ impl AreaImpl<
 
     fn center(self: @Area<T>) -> Point<T> {
         let denom: T = 2_u8.into();
-        // Point { x: (self.left() + self.right()) / denom, y: (self.top() + self.bottom()) / denom }
-        Point { x: (self.left() + self.right()) / denom, y: 0_u8.into() }
+        Point { x: (self.left() + self.right()) / denom, y: (self.top() + self.bottom()) / denom }
     }
 
     fn top(self: @Area<T>) -> T {

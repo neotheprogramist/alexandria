@@ -8,7 +8,6 @@ use quadtree::quadtree::{QuadtreeTrait, QuadtreeNode, Felt252QuadtreeImpl};
 use quadtree::area::{Area, AreaTrait};
 use quadtree::point::{Point, PointTrait};
 
-
 #[test]
 fn test_spillover() {
     // Create a root region at (0, 0) with a width and height of 4
@@ -21,16 +20,14 @@ fn test_spillover() {
     tree.insert_point(PointTrait::new(1, 1));
     tree.insert_point(PointTrait::new(1, 1));
 
-    assert(tree.points(1).len() == 3, 'invalid number in 1');
+    assert(tree.points(1).len() == 3, 'invalid number in root');
     assert(!tree.exists(0b101), 'nw exists before split');
 
     tree.insert_point(PointTrait::new(1, 2));
 
-    let a: felt252 = tree.points(0b101).len().into();
-    a.print();
-
-    assert(tree.points(0b101).len() == 2, 'invalid number in 0b101');
+    assert(tree.points(1).len() == 0, 'number in root not changed');
     assert(tree.exists(0b101), 'nw not existing after spill');
+    assert(tree.points(0b101).len() == 4, 'invalid number in 0b101');
 }
 
 #[test]
