@@ -82,12 +82,12 @@ impl QuadtreeNodeImpl<
             QuadtreeNodeSplit::SplitAt(middle) => Option::Some(
                 match middle.lt_y(point) {
                     false => match middle.lt_x(point) {
-                        true => *self.path * 4_u8.into() ,
+                        true => *self.path * 4_u8.into(),
                         false => *self.path * 4_u8.into() + 1_u8.into(),
                     },
                     true => match middle.lt_x(point) {
                         false => *self.path * 4_u8.into() + 2_u8.into(),
-                        true => *self.path * 4_u8.into()+ 3_u8.into()
+                        true => *self.path * 4_u8.into() + 3_u8.into()
                     },
                 }
             ),
@@ -122,7 +122,7 @@ impl QuadtreeNodeImpl<
             PointTrait::new(1_u8.into(), 1_u8.into()),
         ];
         self.members = ArrayTrait::new().span();
-        
+
         let el = match members.pop_front() {
             Option::Some(member) => member.clone(),
             Option::None => { panic(array!['in code']) },
@@ -177,112 +177,128 @@ impl QuadtreeNodeImpl<
         }
     }
 }
+#[cfg(test)]
+mod test {
+    use core::box::BoxTrait;
+    use core::clone::Clone;
+    use core::traits::TryInto;
+    use core::traits::Into;
+    use core::array::SpanTrait;
+    use core::option::OptionTrait;
+    use core::zeroable::Zeroable;
+    use quadtree::area::{AreaTrait, Area, AreaImpl};
+    use quadtree::point::{Point, PointTrait, PointImpl};
+    use quadtree::node::{QuadtreeNodeTrait, QuadtreeNodeImpl, QuadtreeNode, QuadtreeNodeSplit};
+    #[test]
+    fn test_node_child_at() {
+        let mut node = QuadtreeNodeTrait::<
+            i32, u8, u32
+        >::new(AreaTrait::new(PointTrait::new(0, 0), 4, 4), 1);
 
-#[test]
-fn test_node_child_at() {
-    let mut node = QuadtreeNodeTrait::<
-        i32, u8, u32
-    >::new(AreaTrait::new(PointTrait::new(0, 0), 4, 4), 1);
+        assert(node.child_at(@PointTrait::new(1, 1)).is_none(), 'child before split');
+        node.split_at(PointTrait::new(2, 2));
 
-    assert(node.child_at(@PointTrait::new(1, 1)).is_none(), 'child before split');
-    node.split_at(PointTrait::new(2, 2));
+        assert(node.child_at(@PointTrait::new(3, 1)).unwrap() == 0b100, 'ne center');
+        assert(node.child_at(@PointTrait::new(1, 1)).unwrap() == 0b101, 'nw center');
+        assert(node.child_at(@PointTrait::new(1, 3)).unwrap() == 0b110, 'sw center');
+        assert(node.child_at(@PointTrait::new(3, 3)).unwrap() == 0b111, 'se center');
 
-    assert(node.child_at(@PointTrait::new(3, 1)).unwrap() == 0b100, 'ne center');
-    assert(node.child_at(@PointTrait::new(1, 1)).unwrap() == 0b101, 'nw center');
-    assert(node.child_at(@PointTrait::new(1, 3)).unwrap() == 0b110, 'sw center');
-    assert(node.child_at(@PointTrait::new(3, 3)).unwrap() == 0b111, 'se center');
+        assert(node.child_at(@PointTrait::new(4, 0)).unwrap() == 0b100, 'ne corner');
+        assert(node.child_at(@PointTrait::new(0, 0)).unwrap() == 0b101, 'nw corner');
+        assert(node.child_at(@PointTrait::new(0, 4)).unwrap() == 0b110, 'sw corner');
+        assert(node.child_at(@PointTrait::new(4, 4)).unwrap() == 0b111, 'se corner');
 
-    assert(node.child_at(@PointTrait::new(4, 0)).unwrap() == 0b100, 'ne corner');
-    assert(node.child_at(@PointTrait::new(0, 0)).unwrap() == 0b101, 'nw corner');
-    assert(node.child_at(@PointTrait::new(0, 4)).unwrap() == 0b110, 'sw corner');
-    assert(node.child_at(@PointTrait::new(4, 4)).unwrap() == 0b111, 'se corner');
+        assert(node.child_at(@PointTrait::new(2, 0)).unwrap() == 0b101, 'nw over ne');
+        assert(node.child_at(@PointTrait::new(0, 2)).unwrap() == 0b101, 'nw over sw');
+        assert(node.child_at(@PointTrait::new(2, 4)).unwrap() == 0b110, 'sw over se');
+        assert(node.child_at(@PointTrait::new(4, 2)).unwrap() == 0b100, 'ne over se');
+    }
 
-    assert(node.child_at(@PointTrait::new(2, 0)).unwrap() == 0b101, 'nw over ne');
-    assert(node.child_at(@PointTrait::new(0, 2)).unwrap() == 0b101, 'nw over sw');
-    assert(node.child_at(@PointTrait::new(2, 4)).unwrap() == 0b110, 'sw over se');
-    assert(node.child_at(@PointTrait::new(4, 2)).unwrap() == 0b100, 'ne over se');
-}
+    #[test]
+    fn test_node_child_at_loop() {
+        let mut self = QuadtreeNodeTrait::<
+            i32, u8, u32
+        >::new(AreaTrait::new(PointTrait::new(0, 0), 4, 4), 1);
 
-#[test]
-fn test_node_child_at_loop() {
-    // let mut self = QuadtreeNodeTrait::<
-    //     i32, u8, u32
-    // >::new(AreaTrait::new(PointTrait::new(0, 0), 4, 4), 1);
+        let mut members = array![
+            PointTrait::new(1_u8.into(), 1_u8.into()),
+            PointTrait::new(1_u8.into(), 1_u8.into()),
+            PointTrait::new(1_u8.into(), 1_u8.into()),
+            PointTrait::new(1_u8.into(), 1_u8.into()),
+            PointTrait::new(1_u8.into(), 1_u8.into()),
+            PointTrait::new(1_u8.into(), 1_u8.into()),
+        ]
+            .span();
+        self.members = ArrayTrait::new().span();
 
-    // let mut members = array![
-    //     PointTrait::new(1_u8.into(), 1_u8.into()),
-    //     PointTrait::new(1_u8.into(), 1_u8.into()),
-    //     PointTrait::new(1_u8.into(), 1_u8.into()),
-    //     PointTrait::new(1_u8.into(), 1_u8.into()),
-    //     PointTrait::new(1_u8.into(), 1_u8.into()),
-    //     PointTrait::new(1_u8.into(), 1_u8.into()),
-    // ].span();
-    // self.members = ArrayTrait::new().span();
-    
-    // let el = match members.pop_front() {
-    //     Option::Some(member) => member.clone(),
-    //     Option::None => { panic(array!['in code']) },
-    // };
-    // let path = self.child_at(@el);
+        let el = match members.pop_front() {
+            Option::Some(member) => member.clone(),
+            Option::None => { panic(array!['in code']) },
+        };
+        let path = self.child_at(@el);
 
-    // let el = match members.pop_front() {
-    //     Option::Some(member) => member.clone(),
-    //     Option::None => { panic(array!['in code']) },
-    // };
-    // let path = self.child_at(@el);
+        let el = match members.pop_front() {
+            Option::Some(member) => member.clone(),
+            Option::None => { panic(array!['in code']) },
+        };
+        let path = self.child_at(@el);
 
-    // loop {
-    //     let el = match members.pop_front() {
-    //         Option::Some(member) => member.clone(),
-    //         Option::None => { panic(array!['in loop']) },
-    //     };
-    //     let path = self.child_at(@el);
-    // };
-}
+        loop {
+            if 0 == 1 {
+                break;
+            }
+            let el = match members.pop_front() {
+                Option::Some(member) => member.clone(),
+                Option::None => { panic(array!['in loop']) },
+            };
+            let path = self.child_at(@el);
+        };
+    }
 
-#[test]
-fn test_node_split() {
-    let mut root = QuadtreeNode::<
-        i32, u8, u32
-    > {
-        path: 1,
-        region: AreaTrait::new(PointTrait::new(0, 0), 4, 4),
-        values: ArrayTrait::new().span(),
-        members: ArrayTrait::new().span(),
-        split: QuadtreeNodeSplit::NotSplitYet,
-    };
+    #[test]
+    fn test_node_split() {
+        let mut root = QuadtreeNode::<
+            i32, u8, u32
+        > {
+            path: 1,
+            region: AreaTrait::new(PointTrait::new(0, 0), 4, 4),
+            values: ArrayTrait::new().span(),
+            members: ArrayTrait::new().span(),
+            split: QuadtreeNodeSplit::NotSplitYet,
+        };
 
-    let children = root.split_at(PointTrait::new(2, 2));
+        let children = root.split_at(PointTrait::new(2, 2));
 
-    assert(children.len() == 4, 'There should be 4 children');
-    let ne = children.at(0);
-    let nw = children.at(1);
-    let sw = children.at(2);
-    let se = children.at(3);
+        assert(children.len() == 4, 'There should be 4 children');
+        let ne = children.at(0);
+        let nw = children.at(1);
+        let sw = children.at(2);
+        let se = children.at(3);
 
-    assert(*ne.path == 0b100, 'path ne invalid');
-    assert(*nw.path == 0b101, 'path nw invalid');
-    assert(*sw.path == 0b110, 'path sw invalid');
-    assert(*se.path == 0b111, 'path se invalid');
+        assert(*ne.path == 0b100, 'path ne invalid');
+        assert(*nw.path == 0b101, 'path nw invalid');
+        assert(*sw.path == 0b110, 'path sw invalid');
+        assert(*se.path == 0b111, 'path se invalid');
 
-    assert(ne.region.top() == 0, 'top ne invalid');
-    assert(nw.region.top() == 0, 'top nw invalid');
-    assert(sw.region.top() == 2, 'top sw invalid');
-    assert(se.region.top() == 2, 'top se invalid');
+        assert(ne.region.top() == 0, 'top ne invalid');
+        assert(nw.region.top() == 0, 'top nw invalid');
+        assert(sw.region.top() == 2, 'top sw invalid');
+        assert(se.region.top() == 2, 'top se invalid');
 
-    assert(ne.region.left() == 2, 'left ne invalid');
-    assert(se.region.left() == 2, 'left se invalid');
-    assert(nw.region.left() == 0, 'right nw invalid');
-    assert(sw.region.left() == 0, 'right sw invalid');
+        assert(ne.region.left() == 2, 'left ne invalid');
+        assert(se.region.left() == 2, 'left se invalid');
+        assert(nw.region.left() == 0, 'right nw invalid');
+        assert(sw.region.left() == 0, 'right sw invalid');
 
-    assert(ne.region.bottom() == 2, 'bottom ne invalid');
-    assert(nw.region.bottom() == 2, 'bottom nw invalid');
-    assert(sw.region.bottom() == 4, 'bottom sw invalid');
-    assert(se.region.bottom() == 4, 'bottom se invalid');
+        assert(ne.region.bottom() == 2, 'bottom ne invalid');
+        assert(nw.region.bottom() == 2, 'bottom nw invalid');
+        assert(sw.region.bottom() == 4, 'bottom sw invalid');
+        assert(se.region.bottom() == 4, 'bottom se invalid');
 
-    assert(ne.region.right() == 4, 'right ne invalid');
-    assert(se.region.right() == 4, 'right se invalid');
-    assert(nw.region.right() == 2, 'right nw invalid');
-    assert(sw.region.right() == 2, 'right sw invalid');
+        assert(ne.region.right() == 4, 'right ne invalid');
+        assert(se.region.right() == 4, 'right se invalid');
+        assert(nw.region.right() == 2, 'right nw invalid');
+        assert(sw.region.right() == 2, 'right sw invalid');
+    }
 }
 

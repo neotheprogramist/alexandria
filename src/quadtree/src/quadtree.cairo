@@ -189,7 +189,10 @@ impl Felt252QuadtreeImpl<
                     node.members = new.span();
 
                     let did_spill = match node.members.len() > self.spillover_threhold {
-                        true => match new.span().dedup().len() >= 2 { // if has at least 2 unique points
+                        true => match new
+                            .span()
+                            .dedup()
+                            .len() >= 2 { // if has at least 2 unique points
                             true => Option::Some(node.region.center()),
                             false => Option::None,
                         },
