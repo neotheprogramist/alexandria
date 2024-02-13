@@ -23,15 +23,7 @@ struct QuadtreeNode<T, P, C> {
     /// 0b11111 is the bottom right quadrant of the bottom right.
     path: P,
     /// Whether the node is a leaf or not.
-    split: QuadtreeNodeSplit<C>,
-}
-
-#[derive(PartialEq, Drop, Copy)]
-enum QuadtreeNodeSplit<C> {
-    NotSplitYet,
-    SplitAt: Point<C>,
-// Requested to split, but all the nodes are the same, 
-// which would result in infinite recursive splitting
+    split: Option<Point<C>>,
 }
 
 trait QuadtreeNodeTrait<T, P, C> {
@@ -44,7 +36,6 @@ trait QuadtreeNodeTrait<T, P, C> {
     /// with greater coordinates - top first, then left.
     fn child_at(self: @QuadtreeNode<T, P, C>, point: @Point<C>) -> Option<P>;
     fn split_at(ref self: QuadtreeNode<T, P, C>, point: Point<C>) -> Array<QuadtreeNode<T, P, C>>;
-    fn is_leaf(self: @QuadtreeNode<T, P, C>) -> bool;
 }
 
 impl QuadtreeNodeImpl<
@@ -72,14 +63,14 @@ impl QuadtreeNodeImpl<
             region,
             values: ArrayTrait::new().span(),
             members: ArrayTrait::new().span(),
-            split: QuadtreeNodeSplit::NotSplitYet,
+            split: Option::None,
         }
     }
 
     fn child_at(self: @QuadtreeNode<T, P, C>, point: @Point<C>) -> Option<P> {
         match self.split.clone() {
             // compare coordinates with the middle of the region in the greater
-            QuadtreeNodeSplit::SplitAt(middle) => Option::Some(
+            Option::Some(middle) => Option::Some(
                 *self.path * 4_u8.into() + quarter(@middle, point).into()
             ),
             _ => {
@@ -91,8 +82,8 @@ impl QuadtreeNodeImpl<
 
     fn split_at(ref self: QuadtreeNode<T, P, C>, point: Point<C>) -> Array<QuadtreeNode<T, P, C>> {
         // returning the node to the dictionary
-        assert(!self.is_leaf(), 'Node is not a leaf');
-        self.split = QuadtreeNodeSplit::SplitAt(point);
+        assert(self.split.is_none(), 'Node is not a leaf');
+        self.split = Option::Some(point);
 
         // retrieving the region of the parent node
         let area = self.region;
@@ -169,13 +160,6 @@ impl QuadtreeNodeImpl<
         children
     }
 
-    fn is_leaf(self: @QuadtreeNode<T, P, C>) -> bool {
-        match self.split {
-            QuadtreeNodeSplit::NotSplitYet => false,
-            // QuadtreeNodeSplit::AllNodesIn => false,
-            _ => true,
-        }
-    }
 }
 
 fn quarter<C, +PointTrait<C>>(middle: @Point<C>, point: @Point<C>) -> u8 {
@@ -225,7 +209,7 @@ fn test_node_split() {
         region: AreaTrait::new(PointTrait::new(0, 0), 4, 4),
         values: ArrayTrait::new().span(),
         members: ArrayTrait::new().span(),
-        split: QuadtreeNodeSplit::NotSplitYet,
+        split: Option::None,
     };
 
     let children = root.split_at(PointTrait::new(2, 2));

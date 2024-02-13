@@ -235,7 +235,7 @@ impl Felt252QuadtreeImpl<
                 .intersects(
                     @node.region
                 ) { // if the region does not intersect the node's region, we skip it
-            } else if !node.is_leaf() {
+            } else if node.split.is_none() {
                 // if the node is a leaf, we add the value to the node or split it
                 // TODO: split the node
                 to_append.append(path);
