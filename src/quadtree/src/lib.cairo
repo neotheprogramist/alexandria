@@ -3,10 +3,10 @@ mod tests;
 mod area;
 mod point;
 mod quadtree;
+mod node;
 
-use quadtree::{Felt252Quadtree, Felt252QuadtreeNode};
-use quadtree::Area;
-
+use quadtree::{Point, Area, Felt252Quadtree};
+use node::{QuadtreeNode, QuadtreeNodeTrait};
 
 //! Quadree implementation.
 //!
@@ -31,8 +31,14 @@ use quadtree::Area;
 trait QuadtreeTrait<T, P, C> {
     /// Creates a new uadtree instance.
     fn new(region: Area<C>) -> Felt252Quadtree<T, P, C>;
-    /// Gets the value at the root of the quadtree.
+    /// Gets values at the a given path.
     fn values(ref self: Felt252Quadtree<T, P, C>, path: P) -> Array<T>;
+    /// Queries the quadtree for the regions that contain a given point.
+    fn query_regions(ref self: Felt252Quadtree<T, P, C>, point: Point<C>) -> Array<T>;
     /// Inserts a region into the quadtree.
-    fn insert(ref self: Felt252Quadtree<T, P, C>, path: P, value: T);
+    fn insert_point(ref self: Felt252Quadtree<T, P, C>, value: T, point: Point<C>);
+    fn insert_region(ref self: Felt252Quadtree<T, P, C>, value: T, region: Area<C>);
+    fn insert_at(ref self: Felt252Quadtree<T, P, C>, value: T, path: P);
+    /// Splits a region into 4 subregions at a given point.
+    fn split(ref self: Felt252Quadtree<T, P, C>, path: P, point: Point<C>);
 }
