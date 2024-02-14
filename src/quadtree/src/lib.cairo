@@ -16,14 +16,14 @@ use node::{QuadtreeNode, QuadtreeNodeTrait};
 //! // Create a root region at (0, 0) with a width and height of 4
 //! let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
 //! // Create a new quadtree on that region
-//! let mut tree = QuadtreeTrait::<felt252, felt252>::new(root_region);
+//! let mut tree = QuadtreeTrait::<felt252, felt252, u32>::new(root_region, 5)
 //!
 //! // Values can be inserted into the tree (at any place for now)
-//! tree.insert(0, 42);
-//! tree.insert(0, 2137);
+//! tree.insert_point(PointTrait::new(1, 2));
+//! tree.insert_point(PointTrait::new(3, 4));
 //! // and retrieved from it, in the same fashion
-//! assert_eq!(*tree.values(0).at(0), 42);
-//! assert_eq!(*tree.values(0).at(1), 2137);
+//! assert(*tree.points(1).at(0) == PointTrait::new(1, 2), 'Point 1, 2 not in the tree');
+//! assert(*tree.points(1).at(1) == PointTrait::new(3, 4), 'Point 3, 44 not in the tree');
 //! ```
 
 /// The Quadtree trait takes 3 generic parameters:
@@ -44,8 +44,20 @@ trait QuadtreeTrait<T, P, C> {
     fn query_regions(ref self: Felt252Quadtree<T, P, C>, point: Point<C>) -> Array<T>;
     /// Inserts a region into the quadtree.
     fn insert_point(ref self: Felt252Quadtree<T, P, C>, point: Point<C>);
+    fn remove_point(ref self: Felt252Quadtree<T, P, C>, point: Point<C>) -> Option<Point<C>>;
     fn insert_region(ref self: Felt252Quadtree<T, P, C>, value: T, region: Area<C>);
     /// Splits a region into 4 subregions at a given point.
     fn split(ref self: Felt252Quadtree<T, P, C>, path: P, point: Point<C>);
     fn exists(ref self: Felt252Quadtree<T, P, C>, path: P) -> bool;
+}
+
+#[test]
+fn quadtree_usage() {
+    let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
+
+    let mut tree = QuadtreeTrait::<felt252, felt252, u32>::new(root_region, 5);
+    tree.insert_point(PointTrait::new(1, 2));
+    tree.insert_point(PointTrait::new(3, 4));
+    assert(*tree.points(1).at(0) == PointTrait::new(1, 2), 'Point 1, 2 not in the tree');
+    assert(*tree.points(1).at(1) == PointTrait::new(3, 4), 'Point 3, 4 not in the tree');
 }

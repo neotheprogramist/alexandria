@@ -63,7 +63,6 @@ fn test_area_intersects() {
     assert(
         a.intersects(@AreaTrait::new(PointTrait::new(22, 38), 5, 5)), 'smaller overlap intersects'
     );
-
 }
 
 

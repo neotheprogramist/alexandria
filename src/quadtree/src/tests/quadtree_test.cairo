@@ -9,6 +9,29 @@ use quadtree::area::{Area, AreaTrait};
 use quadtree::point::{Point, PointTrait};
 
 #[test]
+fn test_remove_point() {
+    let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
+    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region, 2);
+    tree.insert_point(PointTrait::new(1, 1));
+    tree.insert_point(PointTrait::new(1, 2));
+    tree.insert_point(PointTrait::new(2, 1));
+
+    // at this point all the points are in the nw node
+    assert(tree.points(0b101).len() == 3, 'invalid nw before');
+
+    // remove a point that does not exist
+    assert(tree.remove_point(PointTrait::new(1, 3)).is_none(), 'remove nonexisting other q');
+    assert(tree.remove_point(PointTrait::new(2, 2)).is_none(), 'remove nonexisting same q');
+
+    // remove the first node
+    assert(tree.remove_point(PointTrait::new(1, 1)).is_some(), 'remove existing first');
+    // remove the last node
+    assert(tree.remove_point(PointTrait::new(2, 1)).is_some(), 'remove existing last');
+    // remove the only remaining node
+    assert(tree.remove_point(PointTrait::new(1, 2)).is_some(), 'remove existing only');
+}
+
+#[test]
 fn test_spillover() {
     // create a root region at (0, 0) with a width and height of 12
     let root_region = AreaTrait::new(PointTrait::new(0, 0), 12, 12);
@@ -56,7 +79,6 @@ fn test_insert_point() {
     // and retrieved from it, in the same fashion
     assert(tree.points(0b101).get(0).is_some(), 'nw does not exist');
 }
-
 
 
 #[test]

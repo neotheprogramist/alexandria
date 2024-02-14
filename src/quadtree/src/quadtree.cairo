@@ -189,6 +189,53 @@ impl Felt252QuadtreeImpl<
         };
     }
 
+    fn remove_point(ref self: Felt252Quadtree<T, P, C>, point: Point<C>) -> Option<Point<C>> {
+        let mut path: P = 1_u8.into();
+
+        loop {
+            // get the node from the dictionary without cloning it
+            let (entry, val) = self.elements.entry(path.into());
+            let mut node = match match_nullable(val) {
+                FromNullableResult::Null => panic!("Node does not exist"),
+                FromNullableResult::NotNull(val) => val.unbox(),
+            };
+
+            // get the next node or process leaf
+            path = match node.child_at(@point) {
+                Option::Some(path) => path,
+                Option::None => {
+                    // searching for the point in the node
+                    let mut new = ArrayTrait::new();
+                    let found = loop {
+                        match node.members.pop_front() {
+                            Option::Some(member) => {
+                                if *member == point {
+                                    // do not add the removed point back to the node
+                                    break Option::Some(*member);
+                                }
+                                new.append(*member);
+                            },
+                            Option::None => { break Option::None; },
+                        }
+                    };
+                    // adding the remaining points to the node
+                    new.append_span(node.members);
+                    node.members = new.span();
+
+                    let val = nullable_from_box(BoxTrait::new(node));
+                    self.elements = entry.finalize(val);
+
+                    break found;
+                }
+            };
+
+            // return the current node to the dictionary
+            let val = nullable_from_box(BoxTrait::new(node));
+            self.elements = entry.finalize(val);
+        }
+    }
+
+
     fn insert_region(ref self: Felt252Quadtree<T, P, C>, value: T, region: Area<C>) {
         let mut to_visit = array![1_u8.into()];
         let mut split = Option::None;
@@ -216,7 +263,6 @@ impl Felt252QuadtreeImpl<
                 new.append_span(node.values);
                 new.append(value);
                 node.values = new.span();
-
             } else if node.split.is_none() {
                 // if the node is a leaf, and not all in the region it needs to be split, and then visited again
                 split = Option::Some(node.region.center());

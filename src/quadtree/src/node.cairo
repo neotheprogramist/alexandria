@@ -108,7 +108,6 @@ impl QuadtreeNodeImpl<
             points.append((member, q));
         };
 
-
         // divide the points into the new nodes
         let mut divided = ArrayTrait::new();
         let mut q: u8 = 0;
@@ -159,7 +158,6 @@ impl QuadtreeNodeImpl<
 
         children
     }
-
 }
 
 fn quarter<C, +PointTrait<C>>(middle: @Point<C>, point: @Point<C>) -> u8 {
