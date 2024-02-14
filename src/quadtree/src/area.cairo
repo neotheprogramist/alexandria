@@ -1,3 +1,4 @@
+use core::traits::Into;
 use quadtree::point::{Point, PointTrait, PointImpl};
 
 /// Represents an 2D area in the quadtree
@@ -15,6 +16,9 @@ trait AreaTrait<T> {
     fn contains(self: @Area<T>, point: @Point<T>) -> bool;
     /// Checks if the area intersects or contains another area
     fn intersects(self: @Area<T>, other: @Area<T>) -> bool;
+    /// Distance to the farthest point in the area
+    fn distance_at_most(self: @Area<T>, point: @Point<T>) -> T;
+    fn center(self: @Area<T>) -> Point<T>;
     /// Getters for bouds of the area
     fn top(self: @Area<T>) -> T;
     fn left(self: @Area<T>) -> T;
@@ -24,7 +28,9 @@ trait AreaTrait<T> {
     fn bottom_right(self: @Area<T>) -> @Point<T>;
 }
 
-impl AreaImpl<T, +Add<T>, +Copy<T>, +Drop<T>, +PointTrait<T>> of AreaTrait<T> {
+impl AreaImpl<
+    T, +Add<T>, +Mul<T>, +Div<T>, +Into<u8, T>, +Copy<T>, +Drop<T>, +PointTrait<T>
+> of AreaTrait<T> {
     fn new(top_left: Point<T>, width: T, height: T) -> Area<T> {
         Area {
             top_left: top_left,
@@ -36,7 +42,6 @@ impl AreaImpl<T, +Add<T>, +Copy<T>, +Drop<T>, +PointTrait<T>> of AreaTrait<T> {
         Area { top_left: Point { x: left, y: top }, bottom_right: Point { x: right, y: bottom }, }
     }
 
-
     fn contains(self: @Area<T>, point: @Point<T>) -> bool {
         point.between_x(self.top_left, self.bottom_right)
             && point.between_y(self.top_left, self.bottom_right)
@@ -47,6 +52,18 @@ impl AreaImpl<T, +Add<T>, +Copy<T>, +Drop<T>, +PointTrait<T>> of AreaTrait<T> {
             && other.top_left.lt_x(self.bottom_right)
             && self.top_left.lt_y(other.bottom_right)
             && other.top_left.lt_y(self.bottom_right)
+    }
+
+    fn distance_at_most(self: @Area<T>, point: @Point<T>) -> T {
+        let x = point.distance_to_farther_x(self.top_left, self.bottom_right);
+        let y = point.distance_to_farther_y(self.top_left, self.bottom_right);
+
+        x * x + y * y
+    }
+
+    fn center(self: @Area<T>) -> Point<T> {
+        let denom: T = 2_u8.into();
+        Point { x: (self.left() + self.right()) / denom, y: (self.top() + self.bottom()) / denom }
     }
 
     fn top(self: @Area<T>) -> T {
