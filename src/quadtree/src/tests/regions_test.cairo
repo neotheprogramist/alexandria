@@ -4,6 +4,42 @@ use quadtree::QuadtreeTrait;
 
 
 #[test]
+fn test_remove_region() {
+    // create a root region at (0, 0) with a width and height of 4
+    let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
+    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region, 1);
+
+    let bigger = AreaTrait::new(PointTrait::new(0, 0), 2, 2);
+    let smaller = AreaTrait::new(PointTrait::new(1, 1), 1, 1);
+
+    // should insert into the ne and nwse
+    tree.insert_region('nw', bigger);
+    tree.insert_region('nwse', smaller);
+    assert_eq!(*tree.values(0b101).get(0).unwrap().unbox(), 'nw');
+    assert_eq!(*tree.values(0b10111).get(0).unwrap().unbox(), 'nwse');
+
+    // removing a non existing region in existing node should not change anything
+    assert(!tree.remove_region('nw', smaller), 'nw removed');
+    assert(!tree.remove_region('nwse', bigger), 'nwse removed');
+
+    // should remove from the ne and nwse
+    assert(tree.remove_region('nw', bigger), 'nw not removed');
+    assert(tree.remove_region('nwse', smaller), 'nwse not removed');
+    assert(tree.values(0b101).is_empty(), 'nw not empty');
+    assert(tree.values(0b10111).is_empty(), 'nwse not empty');
+}
+
+#[test]
+#[should_panic]
+fn test_remove_region_panicking() {
+    let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
+    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region, 1);
+
+    tree.remove_region('nw', AreaTrait::new(PointTrait::new(0, 0), 2, 2));
+}
+
+
+#[test]
 fn test_insert_region() {
     // create a root region at (0, 0) with a width and height of 4
     let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);

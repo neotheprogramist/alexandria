@@ -44,8 +44,12 @@ trait QuadtreeTrait<T, P, C> {
     fn query_regions(ref self: Felt252Quadtree<T, P, C>, point: Point<C>) -> Array<T>;
     /// Inserts a region into the quadtree.
     fn insert_point(ref self: Felt252Quadtree<T, P, C>, point: Point<C>);
+    /// Removes a point from the quadtree, if multiple matching exist, only the first one is removed.
     fn remove_point(ref self: Felt252Quadtree<T, P, C>, point: Point<C>) -> Option<Point<C>>;
+    /// Inserts a region into the quadtree, dividing into subregions if necessary.
     fn insert_region(ref self: Felt252Quadtree<T, P, C>, value: T, region: Area<C>);
+    /// Removes a region from the quadtree, partial region removal is not supported.
+    fn remove_region(ref self: Felt252Quadtree<T, P, C>, value: T, region: Area<C>) -> bool;
     /// Splits a region into 4 subregions at a given point.
     fn split(ref self: Felt252Quadtree<T, P, C>, path: P, point: Point<C>);
     fn exists(ref self: Felt252Quadtree<T, P, C>, path: P) -> bool;

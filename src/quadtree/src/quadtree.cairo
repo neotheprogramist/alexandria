@@ -41,6 +41,7 @@ impl Felt252QuadtreeImpl<
     +PointTrait<C>, // Present in the area
     +AreaTrait<C>,
     +PartialEq<Point<C>>,
+    +PartialEq<T>,
 > of QuadtreeTrait<T, P, C> {
     fn new(region: Area<C>, spillover_threhold: usize) -> Felt252Quadtree<T, P, C> {
         // constructng the root node
@@ -288,6 +289,71 @@ impl Felt252QuadtreeImpl<
             }
         };
     }
+
+    fn remove_region(ref self: Felt252Quadtree<T, P, C>, value: T, region: Area<C>) -> bool {
+        let mut to_visit = array![1_u8.into()];
+        let mut did_remove = false;
+
+        loop {
+            // getting a smaller node
+            let path = match to_visit.pop_front() {
+                Option::Some(path) => path,
+                Option::None => { break; },
+            };
+            let (entry, val) = self.elements.entry(path.into());
+            let mut node = match match_nullable(val) {
+                FromNullableResult::Null => panic!("Node does not exist"),
+                FromNullableResult::NotNull(val) => val.unbox(),
+            };
+
+            if !region
+                .intersects(
+                    @node.region
+                ) { // if the region does not intersect the node's region, we skip it
+            } else if region.contains(node.region.bottom_right())
+                && region.contains(node.region.top_left()) {
+                // if the region contains the node, we add it to the node
+                let mut new = ArrayTrait::new();
+                let found = loop {
+                    match node.values.pop_front() {
+                        Option::Some(current) => {
+                            if *current == value {
+                                // do not add the removed point back to the node
+                                break true;
+                            }
+                            new.append(*current);
+                        },
+                        Option::None => { break false; },
+                    }
+                };
+                // adding the remaining points to the node
+                new.append_span(node.values);
+                node.values = new.span();
+                did_remove = did_remove || found;
+            } else if node.split.is_none() {
+                // if the node is a leaf, and not all in the region it needs to be split, and then visited again
+                to_visit.append(path);
+                panic(
+                    array![
+                        'not a valid operation ', ', abording to avoid ', 'persisting invalid state'
+                    ]
+                );
+            } else {
+                // if the region does not contain the node, we check its children
+                let child_path = node.path * 4_u8.into();
+                to_visit.append(child_path);
+                to_visit.append(child_path + 1_u8.into());
+                to_visit.append(child_path + 2_u8.into());
+                to_visit.append(child_path + 3_u8.into());
+            }
+
+            let val = nullable_from_box(BoxTrait::new(node));
+            self.elements = entry.finalize(val);
+        };
+
+        did_remove
+    }
+
 
     fn split(ref self: Felt252Quadtree<T, P, C>, path: P, point: Point<C>) {
         // getting the node from the dictionary without cloning it
