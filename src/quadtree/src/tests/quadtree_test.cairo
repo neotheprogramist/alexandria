@@ -14,13 +14,31 @@ fn test_closest_points() {
     let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
     let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region, 2);
 
-    tree.insert_point(PointTrait::new(1, 1));
     tree.insert_point(PointTrait::new(2, 2));
-    tree.insert_point(PointTrait::new(1, 1));
     tree.insert_point(PointTrait::new(2, 1));
+    tree.insert_point(PointTrait::new(1, 2));
+    tree.insert_point(PointTrait::new(1, 1));
     tree.insert_point(PointTrait::new(3, 3));
     tree.insert_point(PointTrait::new(3, 1));
-// let closest = tree.closest_points(PointTrait::new(2, 2), 2);
+
+    let closest = tree.closest_points(PointTrait::new(2, 2), 1);
+    assert(closest.len() == 1, 'invalid length of one');
+    assert(**closest.at(0) == PointTrait::new(2, 2), 'first of one invalid');
+
+    let closest = tree.closest_points(PointTrait::new(2, 2), 3);
+    assert(closest.len() == 3, 'invalid length of two');
+    assert(**closest.at(0) == PointTrait::new(2, 2), 'first of three invalid');
+    assert(**closest.at(1) == PointTrait::new(2, 1), 'second of three invalid');
+    assert(**closest.at(2) == PointTrait::new(1, 2), 'third of three invalid');
+
+    let closest = tree.closest_points(PointTrait::new(2, 2), 6);
+    assert(closest.len() == 6, 'invalid length of six');
+    assert(**closest.at(0) == PointTrait::new(2, 2), 'first of six invalid');
+    assert(**closest.at(1) == PointTrait::new(2, 1), 'second of six invalid');
+    assert(**closest.at(2) == PointTrait::new(1, 2), 'third of six invalid');
+    assert(**closest.at(3) == PointTrait::new(3, 1), 'fourth of six invalid');
+    assert(**closest.at(4) == PointTrait::new(3, 3), 'fifth of six invalid');
+    assert(**closest.at(5) == PointTrait::new(1, 1), 'sixth of six invalid');
 }
 
 

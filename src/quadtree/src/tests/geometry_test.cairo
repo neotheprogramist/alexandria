@@ -110,7 +110,4 @@ fn test_distance() {
     assert(a.distance_at_most(@PointTrait::new(0, 2)) == 10, 'point to the left');
     assert(a.distance_at_most(@p22) == 2, 'point inside');
     assert(a.distance_at_most(@PointTrait::new(5, 5)) == 32, 'point to the right');
-
-    let a = (1, 2);
-    a.at(0);
 }

@@ -44,6 +44,7 @@ impl Felt252QuadtreeImpl<
     +PartialEq<C>,
     +PartialOrd<C>,
     +PartialEq<T>,
+    +PartialEq<P>,
 > of QuadtreeTrait<T, P, C> {
     fn new(region: Area<C>, spillover_threhold: usize) -> Felt252Quadtree<T, P, C> {
         // constructng the root node
@@ -130,7 +131,9 @@ impl Felt252QuadtreeImpl<
         values
     }
 
-    fn closest_points(ref self: Felt252Quadtree<T, P, C>, point: Point<C>, n: usize) -> Array<@Point<C>> {
+    fn closest_points(
+        ref self: Felt252Quadtree<T, P, C>, point: Point<C>, n: usize
+    ) -> Array<@Point<C>> {
         // loosely based on https://www.cs.umd.edu/%7Emeesh/cmsc420/ContentBook/FormalNotes/neighbor.pdf
         let mut to_visit = 1_u8.into();
         let mut passed = ArrayTrait::new();
@@ -148,7 +151,11 @@ impl Felt252QuadtreeImpl<
 
             to_visit = match node.child_at(@point) {
                 Option::Some(path) => path,
-                Option::None => { break; }
+                Option::None => {
+                    let val = nullable_from_box(BoxTrait::new(node));
+                    self.elements = entry.finalize(val);
+                    break;
+                }
             };
 
             let val = nullable_from_box(BoxTrait::new(node));
@@ -158,17 +165,25 @@ impl Felt252QuadtreeImpl<
         let mut to_check = ArrayTrait::new();
         let mut found = ArrayTrait::new();
         let mut confirmed_closest = ArrayTrait::new();
+        let mut already_checked = ArrayTrait::new();
         loop {
             // calculate pessimistic distance to all the nodes
             loop {
                 match passed.pop_front() {
                     Option::Some(path) => {
+                        // process only if it was not processed before
+                        match already_checked.contains(path) {
+                            true => { continue; },
+                            false => { already_checked.append(path); },
+                        }
+
                         let (entry, val) = self.elements.entry(path.into());
                         let node = match match_nullable(val) {
                             FromNullableResult::Null => panic!("Node does not exist"),
                             FromNullableResult::NotNull(val) => val.unbox(),
                         };
 
+                        // calculate the maximux distance from the point to the member of the node
                         let distance = node.region.distance_at_most(@point);
                         to_check.append((distance, node.path));
 
@@ -181,7 +196,7 @@ impl Felt252QuadtreeImpl<
 
             // get the closest node
             let (dist, path) = match remove_min(ref to_check) {
-                Option::Some((d, v)) =>(*d, *v),
+                Option::Some((d, v)) => (*d, *v),
                 Option::None => { break; },
             };
             let (entry, val) = self.elements.entry(path.into());
@@ -190,6 +205,7 @@ impl Felt252QuadtreeImpl<
                 FromNullableResult::NotNull(val) => val.unbox(),
             };
 
+            // check if the node is a leaf or not
             match node.split.is_some() {
                 true => passed.append_span(node.children_paths().span()),
                 false => {
@@ -207,17 +223,20 @@ impl Felt252QuadtreeImpl<
 
             loop {
                 match remove_min(ref found) {
-                    Option::Some((d, p)) => if *d <= dist {
-                        confirmed_closest.append(*p);
+                    Option::Some((d, p)) => match *d <= dist {
+                        true => confirmed_closest.append(*p),
+                        false => found.append((*d, *p)),
                     },
-                    Option::None => {
-                        break;
-                    },
+                    Option::None => { break; },
                 }
             };
 
             let val = nullable_from_box(BoxTrait::new(node));
             self.elements = entry.finalize(val);
+
+            if confirmed_closest.len() >= n {
+                break;
+            }
         };
 
         confirmed_closest
@@ -479,7 +498,7 @@ impl DestructFelt252Quadtree<
 fn remove_min<T, U, +Copy<T>, +Drop<T>, +Copy<U>, +Drop<U>, +PartialEq<T>, +PartialOrd<T>>(
     ref arr: Array<(T, U)>
 ) -> Option<(@T, @U)> {
-    let mut index = 0;
+    let mut index = 1;
     let mut index_of_min = 0;
     let mut looking_for_min = arr.span();
     let (mut min_d, mut min_v) = match looking_for_min.pop_front() {
@@ -492,7 +511,7 @@ fn remove_min<T, U, +Copy<T>, +Drop<T>, +Copy<U>, +Drop<U>, +PartialEq<T>, +Part
             Option::Some((
                 d, v
             )) => { if *d < *min_d {
-                index_of_min = index + 1;
+                index_of_min = index;
                 min_d = d;
                 min_v = v;
             } },
@@ -501,13 +520,31 @@ fn remove_min<T, U, +Copy<T>, +Drop<T>, +Copy<U>, +Drop<U>, +PartialEq<T>, +Part
         index += 1;
     };
 
-    let left = arr.span().slice(index_of_min, 1_usize);
-    let remaining_len = arr.len() - index_of_min - 1_usize;
-    let right = arr.span().slice(index_of_min + 1_usize, remaining_len);
+    // let end = arr.len() - 1_usize;
+    let end = arr.len() - index_of_min - 1;
+    let left = arr.span().slice(0, index_of_min);
+    let right = arr.span().slice(index_of_min + 1_usize, end);
 
     arr = ArrayTrait::new();
     arr.append_span(left);
     arr.append_span(right);
 
     Option::Some((min_d, min_v))
+}
+
+#[test]
+fn test_remove_min() {
+    let mut a = array![(3_u8, ()), (1, ()), (2, ())];
+    let (b, _) = remove_min(ref a).unwrap();
+
+    assert(*b == 1, 'invalid first min');
+    assert(a.len() == 2, 'invalid first len');
+
+    let (b, _) = remove_min(ref a).unwrap();
+    assert(*b == 2, 'invalid second min');
+    assert(a.len() == 1, 'invalid second len');
+
+    let (b, _) = remove_min(ref a).unwrap();
+    assert(*b == 3, 'invalid third min');
+    assert(a.len() == 0, 'invalid third len');
 }
