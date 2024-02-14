@@ -61,7 +61,7 @@ trait QuadtreeTrait<T, P, C> {
 fn quadtree_usage() {
     let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
 
-    let mut tree = QuadtreeTrait::<felt252, felt252, u32>::new(root_region, 5);
+    let mut tree = QuadtreeTrait::<felt252, u128, u32>::new(root_region, 5);
     tree.insert_point(PointTrait::new(1, 2));
     tree.insert_point(PointTrait::new(3, 4));
     assert(*tree.points(1).at(0) == PointTrait::new(1, 2), 'Point 1, 2 not in the tree');

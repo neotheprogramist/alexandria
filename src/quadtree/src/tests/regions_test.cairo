@@ -7,7 +7,7 @@ use quadtree::QuadtreeTrait;
 fn test_remove_region() {
     // create a root region at (0, 0) with a width and height of 4
     let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
-    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region, 1);
+    let mut tree = QuadtreeTrait::<felt252, u128, u64>::new(root_region, 1);
 
     let bigger = AreaTrait::new(PointTrait::new(0, 0), 2, 2);
     let smaller = AreaTrait::new(PointTrait::new(1, 1), 1, 1);
@@ -33,7 +33,7 @@ fn test_remove_region() {
 #[should_panic]
 fn test_remove_region_panicking() {
     let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
-    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region, 1);
+    let mut tree = QuadtreeTrait::<felt252, u128, u64>::new(root_region, 1);
 
     tree.remove_region('nw', AreaTrait::new(PointTrait::new(0, 0), 2, 2));
 }
@@ -43,7 +43,7 @@ fn test_remove_region_panicking() {
 fn test_insert_region() {
     // create a root region at (0, 0) with a width and height of 4
     let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
-    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region, 1);
+    let mut tree = QuadtreeTrait::<felt252, u128, u64>::new(root_region, 1);
     tree.split(1, PointTrait::new(2, 2));
     tree.split(0b101, PointTrait::new(1, 1));
 
@@ -68,7 +68,7 @@ fn test_insert_region() {
 fn test_query_regions() {
     // create a root region at (0, 0) with a width and height of 4
     let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
-    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region, 1);
+    let mut tree = QuadtreeTrait::<felt252, u128, u64>::new(root_region, 1);
     tree.split(1, PointTrait::new(2, 2));
     tree.split(0b101, PointTrait::new(1, 1));
 
@@ -92,7 +92,7 @@ fn test_query_regions() {
 fn test_rect_region() {
     // create a root region at (0, 0) with a width and height of 4
     let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
-    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region, 1);
+    let mut tree = QuadtreeTrait::<felt252, u128, u64>::new(root_region, 1);
     tree.split(1, PointTrait::new(2, 2));
     tree.split(0b101, PointTrait::new(1, 1));
 
@@ -117,7 +117,7 @@ fn test_insert_region_splitting() {
     // create a root region at (0, 0) with a width and height of 8
     let root_region = AreaTrait::new(PointTrait::new(0, 0), 8, 8);
     // every node has at most 2 nodes
-    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region, 2);
+    let mut tree = QuadtreeTrait::<felt252, u128, u64>::new(root_region, 2);
 
     // split at (4, 4)
     tree.insert_region(42, AreaTrait::new(PointTrait::new(2, 2), 4, 5));

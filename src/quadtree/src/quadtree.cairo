@@ -43,6 +43,7 @@ impl Felt252QuadtreeImpl<
     +AreaTrait<C>,
     +PartialEq<C>,
     +PartialOrd<C>,
+    +PartialOrd<P>,
     +PartialEq<T>,
     +PartialEq<P>,
 > of QuadtreeTrait<T, P, C> {
@@ -453,6 +454,11 @@ impl Felt252QuadtreeImpl<
 
 
     fn split(ref self: Felt252Quadtree<T, P, C>, path: P, point: Point<C>) {
+        if path > path * 4_u8.into() {
+            // tree reached its maximum depth
+            return;
+        }
+
         // getting the node from the dictionary without cloning it
         let (entry, val) = self.elements.entry(path.into());
         let mut parent = match match_nullable(val) {
