@@ -218,6 +218,7 @@ impl Felt252QuadtreeImpl<
     fn insert_region(ref self: Felt252Quadtree<T, P, C>, value: T, region: Area<C>) {
         let mut to_visit = array![1_u8.into()];
         let mut to_append = ArrayTrait::new();
+        let mut split = Option::None;
 
         loop {
             // getting a smaller node
@@ -241,7 +242,7 @@ impl Felt252QuadtreeImpl<
                 to_append.append(path);
             } else if node.split.is_none() {
                 // if the node is a leaf, and not all in the region it needs to be split, and then visited again
-                node.split = Option::Some(node.region.center());
+                split = Option::Some(node.region.center());
                 to_visit.append(path);
             } else {
                 // if the region does not contain the node, we check its children
@@ -254,6 +255,14 @@ impl Felt252QuadtreeImpl<
 
             let val = nullable_from_box(BoxTrait::new(node));
             self.elements = entry.finalize(val);
+
+            match split {
+                Option::Some(center) => {
+                    self.split(path, center);
+                    split = Option::None;
+                },
+                Option::None => {},
+            }
         };
 
         loop {
