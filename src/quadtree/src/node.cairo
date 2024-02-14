@@ -14,7 +14,7 @@ use quadtree::point::{Point, PointTrait, PointImpl};
 struct QuadtreeNode<T, P, C> {
     /// Values for a given region of the quadtree.
     values: Span<T>,
-    members: Span<Point<C>>,
+    members: Span<Point<C, T>>,
     /// The region of the grometry that this node represents.
     region: Area<C>,
     /// The path of the node in the quadtree, the first bit is always a 1 and the
@@ -23,7 +23,7 @@ struct QuadtreeNode<T, P, C> {
     /// 0b11111 is the bottom right quadrant of the bottom right.
     path: P,
     /// Whether the node is a leaf or not.
-    split: Option<Point<C>>,
+    split: Option<Point<C, ()>>,
 }
 
 trait QuadtreeNodeTrait<T, P, C> {
@@ -34,8 +34,8 @@ trait QuadtreeNodeTrait<T, P, C> {
     /// Assumes the point is within the region of the node.
     /// If the point is on the border of the region, it returns the child
     /// with greater coordinates - top first, then left.
-    fn child_at(self: @QuadtreeNode<T, P, C>, point: @Point<C>) -> Option<P>;
-    fn split_at(ref self: QuadtreeNode<T, P, C>, point: Point<C>) -> Array<QuadtreeNode<T, P, C>>;
+    fn child_at<V, +PointTrait<C, V>>(self: @QuadtreeNode<T, P, C>, point: @Point<C, V>) -> Option<P>;
+    fn split_at(ref self: QuadtreeNode<T, P, C>, point: Point<C, ()>) -> Array<QuadtreeNode<T, P, C>>;
 }
 
 impl QuadtreeNodeImpl<
@@ -52,7 +52,8 @@ impl QuadtreeNodeImpl<
     +Add<P>, // Nesting the path
     +Sub<P>, // Parents path
     +Mul<P>, // Nesting the path
-    +PointTrait<C>, // Present in the area
+    +PointTrait<C, T>, // Present in the area
+    +PointTrait<C, ()>, // Present in the area
     +AreaTrait<C>,
 > of QuadtreeNodeTrait<T, P, C> {
     fn new(region: Area<C>, path: P) -> QuadtreeNode<T, P, C> {
@@ -67,7 +68,7 @@ impl QuadtreeNodeImpl<
         }
     }
 
-    fn child_at(self: @QuadtreeNode<T, P, C>, point: @Point<C>) -> Option<P> {
+    fn child_at<V, +PointTrait<C, V>>(self: @QuadtreeNode<T, P, C>, point: @Point<C, V>) -> Option<P> {
         match self.split.clone() {
             // compare coordinates with the middle of the region in the greater
             Option::Some(middle) => Option::Some(
@@ -80,7 +81,7 @@ impl QuadtreeNodeImpl<
         }
     }
 
-    fn split_at(ref self: QuadtreeNode<T, P, C>, point: Point<C>) -> Array<QuadtreeNode<T, P, C>> {
+    fn split_at(ref self: QuadtreeNode<T, P, C>, point: Point<C, ()>) -> Array<QuadtreeNode<T, P, C>> {
         // returning the node to the dictionary
         assert(self.split.is_none(), 'Node is not a leaf');
         self.split = Option::Some(point);
@@ -160,7 +161,7 @@ impl QuadtreeNodeImpl<
     }
 }
 
-fn quarter<C, +PointTrait<C>>(middle: @Point<C>, point: @Point<C>) -> u8 {
+fn quarter<C, T, U, +PointTrait<C, T>, +PointTrait<C, U>>(middle: @Point<C, U>, point: @Point<C, T>) -> u8 {
     match middle.lt_y(point) {
         false => match middle.lt_x(point) {
             true => 0,

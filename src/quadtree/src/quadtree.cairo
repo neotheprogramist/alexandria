@@ -38,10 +38,11 @@ impl Felt252QuadtreeImpl<
     +Add<P>, // Nesting the path
     +Mul<P>, // Nesting the path
     +Sub<P>, // QuadtreeNodeTrait
-    +PointTrait<C>, // Present in the area
+    +PointTrait<C, T>, // Present in the area
     +AreaTrait<C>,
-    +PartialEq<Point<C>>,
+    +PartialEq<Point<C, T>>,
     +PartialEq<T>,
+    +PointTrait<C, ()>, // Present in the area
 > of QuadtreeTrait<T, P, C> {
     fn new(region: Area<C>, spillover_threhold: usize) -> Felt252Quadtree<T, P, C> {
         // constructng the root node
@@ -75,7 +76,7 @@ impl Felt252QuadtreeImpl<
         result
     }
 
-    fn points(ref self: Felt252Quadtree<T, P, C>, path: P) -> Array<Point<C>> {
+    fn points(ref self: Felt252Quadtree<T, P, C>, path: P) -> Array<Point<C, T>> {
         // getting the node from the dictionary without cloning it
         let (entry, val) = self.elements.entry(path.into());
         let node = match match_nullable(val) {
@@ -93,7 +94,7 @@ impl Felt252QuadtreeImpl<
         result
     }
 
-    fn query_regions(ref self: Felt252Quadtree<T, P, C>, point: Point<C>) -> Array<T> {
+    fn query_regions(ref self: Felt252Quadtree<T, P, C>, point: Point<C, ()>) -> Array<T> {
         let mut path = Option::Some(1_u8.into());
         let mut values = ArrayTrait::new();
 
@@ -128,7 +129,7 @@ impl Felt252QuadtreeImpl<
         values
     }
 
-    fn closes_points(ref self: Felt252Quadtree<T, P, C>, point: Point<C>, n: usize) -> Array<T> {
+    fn closes_points(ref self: Felt252Quadtree<T, P, C>, point: Point<C, ()>, n: usize) -> Array<T> {
         // loosely based on https://www.cs.umd.edu/%7Emeesh/cmsc420/ContentBook/FormalNotes/neighbor.pdf
         let confirmed_closest = ArrayTrait::new();
         // let found = ArrayTrait::new();
@@ -141,7 +142,7 @@ impl Felt252QuadtreeImpl<
         }
     }
 
-    fn insert_point(ref self: Felt252Quadtree<T, P, C>, point: Point<C>) {
+    fn insert_point(ref self: Felt252Quadtree<T, P, C>, point: Point<C, T>) {
         let mut path: P = 1_u8.into();
 
         loop {
@@ -190,7 +191,7 @@ impl Felt252QuadtreeImpl<
         };
     }
 
-    fn remove_point(ref self: Felt252Quadtree<T, P, C>, point: Point<C>) -> Option<Point<C>> {
+    fn remove_point(ref self: Felt252Quadtree<T, P, C>, point: Point<C, T>) -> Option<Point<C, T>> {
         let mut path: P = 1_u8.into();
 
         loop {
@@ -355,7 +356,7 @@ impl Felt252QuadtreeImpl<
     }
 
 
-    fn split(ref self: Felt252Quadtree<T, P, C>, path: P, point: Point<C>) {
+    fn split(ref self: Felt252Quadtree<T, P, C>, path: P, point: Point<C, ()>) {
         // getting the node from the dictionary without cloning it
         let (entry, val) = self.elements.entry(path.into());
         let mut parent = match match_nullable(val) {

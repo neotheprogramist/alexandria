@@ -4,45 +4,45 @@ use quadtree::point::{Point, PointTrait, PointImpl};
 /// Represents an 2D area in the quadtree
 #[derive(Drop, Copy)]
 struct Area<T> {
-    top_left: Point<T>,
-    bottom_right: Point<T>,
+    top_left: Point<T, ()>,
+    bottom_right: Point<T, ()>,
 }
 
 trait AreaTrait<T> {
     /// Creates a new area
-    fn new(top_left: Point<T>, width: T, height: T) -> Area<T>;
+    fn new(top_left: Point<T, ()>, width: T, height: T) -> Area<T>;
     fn new_from_points(top: T, left: T, bottom: T, right: T) -> Area<T>;
     /// Checks if the area contains a point
-    fn contains(self: @Area<T>, point: @Point<T>) -> bool;
+    fn contains(self: @Area<T>, point: @Point<T, ()>) -> bool;
     /// Checks if the area intersects or contains another area
     fn intersects(self: @Area<T>, other: @Area<T>) -> bool;
     /// Distance to the farthest point in the area
-    fn distance_at_most(self: @Area<T>, point: @Point<T>) -> T;
-    fn center(self: @Area<T>) -> Point<T>;
+    fn distance_at_most(self: @Area<T>, point: @Point<T, ()>) -> T;
+    fn center(self: @Area<T>) -> Point<T, ()>;
     /// Getters for bouds of the area
     fn top(self: @Area<T>) -> T;
     fn left(self: @Area<T>) -> T;
     fn bottom(self: @Area<T>) -> T;
     fn right(self: @Area<T>) -> T;
-    fn top_left(self: @Area<T>) -> @Point<T>;
-    fn bottom_right(self: @Area<T>) -> @Point<T>;
+    fn top_left(self: @Area<T>) -> @Point<T, ()>;
+    fn bottom_right(self: @Area<T>) -> @Point<T, ()>;
 }
 
 impl AreaImpl<
-    T, +Add<T>, +Mul<T>, +Div<T>, +Into<u8, T>, +Copy<T>, +Drop<T>, +PointTrait<T>
+    T, +Add<T>, +Mul<T>, +Div<T>, +Into<u8, T>, +Copy<T>, +Drop<T>, +PointTrait<T, ()>
 > of AreaTrait<T> {
-    fn new(top_left: Point<T>, width: T, height: T) -> Area<T> {
+    fn new(top_left: Point<T, ()>, width: T, height: T) -> Area<T> {
         Area {
             top_left: top_left,
-            bottom_right: Point { x: top_left.x + width, y: top_left.y + height },
+            bottom_right: Point { x: top_left.x + width, y: top_left.y + height, v: () },
         }
     }
 
     fn new_from_points(top: T, left: T, bottom: T, right: T) -> Area<T> {
-        Area { top_left: Point { x: left, y: top }, bottom_right: Point { x: right, y: bottom }, }
+        Area { top_left: Point { x: left, y: top, v: () }, bottom_right: Point { x: right, y: bottom, v: () }, }
     }
 
-    fn contains(self: @Area<T>, point: @Point<T>) -> bool {
+    fn contains(self: @Area<T>, point: @Point<T, ()>) -> bool {
         point.between_x(self.top_left, self.bottom_right)
             && point.between_y(self.top_left, self.bottom_right)
     }
@@ -54,16 +54,16 @@ impl AreaImpl<
             && other.top_left.lt_y(self.bottom_right)
     }
 
-    fn distance_at_most(self: @Area<T>, point: @Point<T>) -> T {
+    fn distance_at_most(self: @Area<T>, point: @Point<T, ()>) -> T {
         let x = point.distance_to_farther_x(self.top_left, self.bottom_right);
         let y = point.distance_to_farther_y(self.top_left, self.bottom_right);
 
         x * x + y * y
     }
 
-    fn center(self: @Area<T>) -> Point<T> {
+    fn center(self: @Area<T>) -> Point<T, ()> {
         let denom: T = 2_u8.into();
-        Point { x: (self.left() + self.right()) / denom, y: (self.top() + self.bottom()) / denom }
+        Point { x: (self.left() + self.right()) / denom, y: (self.top() + self.bottom()) / denom, v: ()}
     }
 
     fn top(self: @Area<T>) -> T {
@@ -82,11 +82,11 @@ impl AreaImpl<
         *self.bottom_right.x
     }
 
-    fn top_left(self: @Area<T>) -> @Point<T> {
+    fn top_left(self: @Area<T>) -> @Point<T, ()> {
         self.top_left
     }
 
-    fn bottom_right(self: @Area<T>) -> @Point<T> {
+    fn bottom_right(self: @Area<T>) -> @Point<T, ()> {
         self.bottom_right
     }
 }
