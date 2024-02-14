@@ -5,7 +5,8 @@ mod point;
 mod quadtree;
 mod node;
 
-use quadtree::{Point, Area, Felt252Quadtree};
+use quadtree::{AreaTrait, PointTrait, Area, Point};
+use quadtree::{Felt252Quadtree, Felt252QuadtreeImpl};
 use node::{QuadtreeNode, QuadtreeNodeTrait};
 
 //! Quadree implementation.
@@ -44,7 +45,6 @@ trait QuadtreeTrait<T, P, C> {
     /// Inserts a region into the quadtree.
     fn insert_point(ref self: Felt252Quadtree<T, P, C>, point: Point<C>);
     fn insert_region(ref self: Felt252Quadtree<T, P, C>, value: T, region: Area<C>);
-    fn insert_at(ref self: Felt252Quadtree<T, P, C>, value: T, path: P);
     /// Splits a region into 4 subregions at a given point.
     fn split(ref self: Felt252Quadtree<T, P, C>, path: P, point: Point<C>);
     fn exists(ref self: Felt252Quadtree<T, P, C>, path: P) -> bool;

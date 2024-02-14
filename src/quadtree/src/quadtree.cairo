@@ -140,32 +140,6 @@ impl Felt252QuadtreeImpl<
         }
     }
 
-    fn insert_at(ref self: Felt252Quadtree<T, P, C>, value: T, path: P) {
-        // getting the node from the dictionary without cloning it
-        let (entry, val) = self.elements.entry(path.into());
-        let mut node = match match_nullable(val) {
-            FromNullableResult::Null => panic!("Node does not exist"),
-            FromNullableResult::NotNull(val) => val.unbox(),
-        };
-
-        // adding the value to the node
-        let mut new = ArrayTrait::new();
-        let mut i = 0;
-        loop {
-            if i == node.values.len() {
-                break;
-            }
-            new.append(*node.values[i]);
-            i += 1;
-        };
-        new.append(value);
-        node.values = new.span();
-
-        // returning the node to the dictionary
-        let val = nullable_from_box(BoxTrait::new(node));
-        self.elements = entry.finalize(val);
-    }
-
     fn insert_point(ref self: Felt252Quadtree<T, P, C>, point: Point<C>) {
         let mut path: P = 1_u8.into();
 
@@ -217,7 +191,6 @@ impl Felt252QuadtreeImpl<
 
     fn insert_region(ref self: Felt252Quadtree<T, P, C>, value: T, region: Area<C>) {
         let mut to_visit = array![1_u8.into()];
-        let mut to_append = ArrayTrait::new();
         let mut split = Option::None;
 
         loop {
@@ -239,7 +212,11 @@ impl Felt252QuadtreeImpl<
             } else if region.contains(node.region.bottom_right())
                 && region.contains(node.region.top_left()) {
                 // if the region contains the node, we add it to the node
-                to_append.append(path);
+                let mut new = ArrayTrait::new();
+                new.append_span(node.values);
+                new.append(value);
+                node.values = new.span();
+
             } else if node.split.is_none() {
                 // if the node is a leaf, and not all in the region it needs to be split, and then visited again
                 split = Option::Some(node.region.center());
@@ -264,13 +241,6 @@ impl Felt252QuadtreeImpl<
                 Option::None => {},
             }
         };
-
-        loop {
-            match to_append.pop_front() {
-                Option::Some(path) => self.insert_at(value, path),
-                Option::None => { break; },
-            };
-        }
     }
 
     fn split(ref self: Felt252Quadtree<T, P, C>, path: P, point: Point<C>) {
