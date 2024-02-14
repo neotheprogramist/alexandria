@@ -1,3 +1,4 @@
+use core::debug::PrintTrait;
 use quadtree::PointTrait;
 use quadtree::AreaTrait;
 
@@ -80,4 +81,36 @@ fn test_area_contains() {
     assert(a.contains(@PointTrait::new(21, 47)), 'bottom left does not contains');
     assert(a.contains(@PointTrait::new(31, 47)), 'bottom right does not contains');
     assert(a.contains(@PointTrait::new(25, 41)), 'center does not contains');
+}
+
+#[test]
+fn test_distance() {
+    let p11 = PointTrait::new(1, 1);
+    let p12 = PointTrait::new(1, 2);
+    let p22 = PointTrait::new(2, 2);
+    let p3100 = PointTrait::new(3, 100);
+    let p1003 = PointTrait::new(100, 3);
+
+    // simple distance tests
+    assert(p11.distance_squared(@p11) == 0, 'same point sq');
+    assert(p11.distance_squared(@p12) == 1, 'straight line sq');
+    assert(p11.distance_squared(@p22) == 2, 'diagonal line sq');
+
+    // distance to farther tests
+    assert(p11.distance_to_farther_x(@p11, @p11) == 0, 'farther same x');
+    assert(p11.distance_to_farther_x(@p22, @p22) == 1, 'farther other x');
+    assert(p11.distance_to_farther_x(@p11, @p3100) == 2, 'farther different x');
+
+    assert(p11.distance_to_farther_y(@p11, @p11) == 0, 'farther same y');
+    assert(p11.distance_to_farther_y(@p22, @p22) == 1, 'farther other y');
+    assert(p11.distance_to_farther_y(@p11, @p1003) == 2, 'farther different y');
+
+    // distance at most tests
+    let a = AreaTrait::<u32>::new(p11, 2, 2);
+    assert(a.distance_at_most(@PointTrait::new(0, 2)) == 10, 'point to the left');
+    assert(a.distance_at_most(@p22) == 2, 'point inside');
+    assert(a.distance_at_most(@PointTrait::new(5, 5)) == 32, 'point to the right');
+
+    let a = (1, 2);
+    a.at(0);
 }

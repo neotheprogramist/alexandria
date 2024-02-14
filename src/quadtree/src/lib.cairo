@@ -39,7 +39,7 @@ trait QuadtreeTrait<T, P, C> {
     fn values(ref self: Felt252Quadtree<T, P, C>, path: P) -> Array<T>;
     fn points(ref self: Felt252Quadtree<T, P, C>, path: P) -> Array<Point<C>>;
     /// Closest points to a given point.
-    fn closes_points(ref self: Felt252Quadtree<T, P, C>, point: Point<C>, n: usize) -> Array<T>;
+    fn closest_points(ref self: Felt252Quadtree<T, P, C>, point: Point<C>, n: usize) -> Array<@Point<C>>;
     /// Queries the quadtree for the regions that contain a given point.
     fn query_regions(ref self: Felt252Quadtree<T, P, C>, point: Point<C>) -> Array<T>;
     /// Inserts a region into the quadtree.

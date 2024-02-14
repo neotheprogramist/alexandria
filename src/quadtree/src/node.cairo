@@ -36,6 +36,7 @@ trait QuadtreeNodeTrait<T, P, C> {
     /// with greater coordinates - top first, then left.
     fn child_at(self: @QuadtreeNode<T, P, C>, point: @Point<C>) -> Option<P>;
     fn split_at(ref self: QuadtreeNode<T, P, C>, point: Point<C>) -> Array<QuadtreeNode<T, P, C>>;
+    fn children_paths(self: @QuadtreeNode<T, P, C>) -> Array<P>;
 }
 
 impl QuadtreeNodeImpl<
@@ -157,6 +158,16 @@ impl QuadtreeNodeImpl<
         };
 
         children
+    }
+
+    fn children_paths(self: @QuadtreeNode<T, P, C>) -> Array<P> {
+        let child_path = *self.path * 4_u8.into();
+        array![
+            child_path,
+            child_path + 1_u8.into(),
+            child_path + 2_u8.into(),
+            child_path + 3_u8.into(),
+        ]
     }
 }
 

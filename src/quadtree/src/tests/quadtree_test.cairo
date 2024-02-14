@@ -8,6 +8,22 @@ use quadtree::quadtree::{QuadtreeTrait, QuadtreeNode, Felt252QuadtreeImpl};
 use quadtree::area::{Area, AreaTrait};
 use quadtree::point::{Point, PointTrait};
 
+
+#[test]
+fn test_closest_points() {
+    let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);
+    let mut tree = QuadtreeTrait::<felt252, felt252, u64>::new(root_region, 2);
+
+    tree.insert_point(PointTrait::new(1, 1));
+    tree.insert_point(PointTrait::new(2, 2));
+    tree.insert_point(PointTrait::new(1, 1));
+    tree.insert_point(PointTrait::new(2, 1));
+    tree.insert_point(PointTrait::new(3, 3));
+    tree.insert_point(PointTrait::new(3, 1));
+// let closest = tree.closest_points(PointTrait::new(2, 2), 2);
+}
+
+
 #[test]
 fn test_remove_point() {
     let root_region = AreaTrait::new(PointTrait::new(0, 0), 4, 4);

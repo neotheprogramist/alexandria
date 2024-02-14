@@ -1,3 +1,4 @@
+use alexandria_data_structures::array_ext::ArrayTraitExt;
 use core::debug::PrintTrait;
 use alexandria_data_structures::array_ext::SpanTraitExt;
 use core::option::OptionTrait;
@@ -40,7 +41,8 @@ impl Felt252QuadtreeImpl<
     +Sub<P>, // QuadtreeNodeTrait
     +PointTrait<C>, // Present in the area
     +AreaTrait<C>,
-    +PartialEq<Point<C>>,
+    +PartialEq<C>,
+    +PartialOrd<C>,
     +PartialEq<T>,
 > of QuadtreeTrait<T, P, C> {
     fn new(region: Area<C>, spillover_threhold: usize) -> Felt252Quadtree<T, P, C> {
@@ -128,17 +130,97 @@ impl Felt252QuadtreeImpl<
         values
     }
 
-    fn closes_points(ref self: Felt252Quadtree<T, P, C>, point: Point<C>, n: usize) -> Array<T> {
+    fn closest_points(ref self: Felt252Quadtree<T, P, C>, point: Point<C>, n: usize) -> Array<@Point<C>> {
         // loosely based on https://www.cs.umd.edu/%7Emeesh/cmsc420/ContentBook/FormalNotes/neighbor.pdf
-        let confirmed_closest = ArrayTrait::new();
-        // let found = ArrayTrait::new();
-        // let visited = ArrayTrait::new();
+        let mut to_visit = 1_u8.into();
+        let mut passed = ArrayTrait::new();
 
+        // first find all nodes on the path to leaf
         loop {
-            if confirmed_closest.len() == n {
-                break confirmed_closest;
-            }
-        }
+            passed.append(to_visit);
+
+            // get the node from the dictionary without cloning it
+            let (entry, val) = self.elements.entry(to_visit.into());
+            let mut node = match match_nullable(val) {
+                FromNullableResult::Null => panic!("Node does not exist"),
+                FromNullableResult::NotNull(val) => val.unbox(),
+            };
+
+            to_visit = match node.child_at(@point) {
+                Option::Some(path) => path,
+                Option::None => { break; }
+            };
+
+            let val = nullable_from_box(BoxTrait::new(node));
+            self.elements = entry.finalize(val);
+        };
+
+        let mut to_check = ArrayTrait::new();
+        let mut found = ArrayTrait::new();
+        let mut confirmed_closest = ArrayTrait::new();
+        loop {
+            // calculate pessimistic distance to all the nodes
+            loop {
+                match passed.pop_front() {
+                    Option::Some(path) => {
+                        let (entry, val) = self.elements.entry(path.into());
+                        let node = match match_nullable(val) {
+                            FromNullableResult::Null => panic!("Node does not exist"),
+                            FromNullableResult::NotNull(val) => val.unbox(),
+                        };
+
+                        let distance = node.region.distance_at_most(@point);
+                        to_check.append((distance, node.path));
+
+                        let val = nullable_from_box(BoxTrait::new(node));
+                        self.elements = entry.finalize(val);
+                    },
+                    Option::None => { break; },
+                }
+            };
+
+            // get the closest node
+            let (dist, path) = match remove_min(ref to_check) {
+                Option::Some((d, v)) =>(*d, *v),
+                Option::None => { break; },
+            };
+            let (entry, val) = self.elements.entry(path.into());
+            let node = match match_nullable(val) {
+                FromNullableResult::Null => panic!("Node does not exist"),
+                FromNullableResult::NotNull(val) => val.unbox(),
+            };
+
+            match node.split.is_some() {
+                true => passed.append_span(node.children_paths().span()),
+                false => {
+                    let mut members = node.members;
+                    loop {
+                        match members.pop_front() {
+                            Option::Some(member) => {
+                                found.append((member.distance_squared(@point), member));
+                            },
+                            Option::None => { break; },
+                        }
+                    }
+                },
+            };
+
+            loop {
+                match remove_min(ref found) {
+                    Option::Some((d, p)) => if *d <= dist {
+                        confirmed_closest.append(*p);
+                    },
+                    Option::None => {
+                        break;
+                    },
+                }
+            };
+
+            let val = nullable_from_box(BoxTrait::new(node));
+            self.elements = entry.finalize(val);
+        };
+
+        confirmed_closest
     }
 
     fn insert_point(ref self: Felt252Quadtree<T, P, C>, point: Point<C>) {
@@ -270,11 +352,7 @@ impl Felt252QuadtreeImpl<
                 to_visit.append(path);
             } else {
                 // if the region does not contain the node, we check its children
-                let child_path = node.path * 4_u8.into();
-                to_visit.append(child_path);
-                to_visit.append(child_path + 1_u8.into());
-                to_visit.append(child_path + 2_u8.into());
-                to_visit.append(child_path + 3_u8.into());
+                to_visit.append_span(node.children_paths().span());
             }
 
             let val = nullable_from_box(BoxTrait::new(node));
@@ -396,4 +474,40 @@ impl DestructFelt252Quadtree<
     fn destruct(self: Felt252Quadtree<T, P, C>) nopanic {
         self.elements.squash();
     }
+}
+
+fn remove_min<T, U, +Copy<T>, +Drop<T>, +Copy<U>, +Drop<U>, +PartialEq<T>, +PartialOrd<T>>(
+    ref arr: Array<(T, U)>
+) -> Option<(@T, @U)> {
+    let mut index = 0;
+    let mut index_of_min = 0;
+    let mut looking_for_min = arr.span();
+    let (mut min_d, mut min_v) = match looking_for_min.pop_front() {
+        Option::Some(item) => item,
+        Option::None => { return Option::None; },
+    };
+
+    loop {
+        match looking_for_min.pop_front() {
+            Option::Some((
+                d, v
+            )) => { if *d < *min_d {
+                index_of_min = index + 1;
+                min_d = d;
+                min_v = v;
+            } },
+            Option::None => { break; },
+        };
+        index += 1;
+    };
+
+    let left = arr.span().slice(index_of_min, 1_usize);
+    let remaining_len = arr.len() - index_of_min - 1_usize;
+    let right = arr.span().slice(index_of_min + 1_usize, remaining_len);
+
+    arr = ArrayTrait::new();
+    arr.append_span(left);
+    arr.append_span(right);
+
+    Option::Some((min_d, min_v))
 }

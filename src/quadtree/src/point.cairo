@@ -43,9 +43,9 @@ impl PointImpl<T, +Copy<T>, +Drop<T>, +PartialOrd<T>, +Add<T>, +Sub<T>, +Mul<T>>
             true => *self.x - *other.x,
             false => *other.x - *self.x
         };
-        let y = match *self.x > *other.x {
-            true => *self.x - *other.x,
-            false => *other.x - *self.x
+        let y = match *self.y > *other.y {
+            true => *self.y - *other.y,
+            false => *other.y - *self.y
         };
         x * x + y * y
     }
@@ -77,8 +77,8 @@ impl PointImpl<T, +Copy<T>, +Drop<T>, +PartialOrd<T>, +Add<T>, +Sub<T>, +Mul<T>>
         };
 
         match first_x < second_x {
-            true => first_x,
-            false => second_x
+            true => second_x,
+            false => first_x
         }
     }
 
@@ -93,8 +93,8 @@ impl PointImpl<T, +Copy<T>, +Drop<T>, +PartialOrd<T>, +Add<T>, +Sub<T>, +Mul<T>>
         };
 
         match first_y < second_y {
-            true => first_y,
-            false => second_y
+            true => second_y,
+            false => first_y
         }
     }
 }
