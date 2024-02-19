@@ -16,8 +16,8 @@ trait IterTrait<M, T, Y, +Map<M, T, Y>> {
     fn iter(ref self: Array<T>) -> Array<T>;
 }
 
-impl Iter<M, Y, T, +Map<M, T, Y>, +Drop<Array<T>>> of IterTrait<M, T, Y> {
-    fn iter(ref self: Array<T>) -> Array<T> {
+impl Iter_u32<M, +Map<M, u32, u32>> of IterTrait<M, u32, u32> {
+    fn iter(ref self: Array<u32>) -> Array<u32> {
         let mut result = ArrayTrait::new();
 
         loop {
@@ -26,7 +26,7 @@ impl Iter<M, Y, T, +Map<M, T, Y>, +Drop<Array<T>>> of IterTrait<M, T, Y> {
                 Option::None => { break; }
             };
 
-            result.append(v);
+            result.append(MapSquareImpl::map(v));
         };
 
         result
@@ -35,14 +35,15 @@ impl Iter<M, Y, T, +Map<M, T, Y>, +Drop<Array<T>>> of IterTrait<M, T, Y> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Iter, MapSquare};
+    use super::{Iter_u32, MapSquare};
 
     #[test]
     fn it_works() {
         let mut data = array![1_u32, 2, 3];
-        let result = Iter::<MapSquare, u32, u32>::iter(ref data);
+        let result = Iter_u32::<MapSquare>::iter(ref data);
+        
         assert(*result.at(0) == 1, 'invalid at 0');
-        // assert(*result.at(1) == 4, 'invalid at 1');
-        // assert(*result.at(2) == 9, 'invalid at 2');
+        assert(*result.at(1) == 4, 'invalid at 1');
+        assert(*result.at(2) == 9, 'invalid at 2');
     }
 }
